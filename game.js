@@ -472,51 +472,111 @@ class PuyoGame {
             return y;
         };
 
-        const pivotGroundY = findGroundY(p.pivot.x, p.pivot.y);
-        const childGroundY = findGroundY(p.child.x, p.child.y);
-
         let chigiriOccurred = false;
 
-        // 軸ぷよの接地またはちぎり
-        if (pivotGroundY === p.pivot.y) {
-            this.grid[p.pivot.y][p.pivot.x] = p.pivot.puyo;
-            p.pivot.puyo.triggerSquash(0.45);
-            if (window.soundEngine) window.soundEngine.playLand();
-        } else {
-            chigiriOccurred = true;
-            p.pivot.puyo.isFalling = true;
-            p.pivot.puyo.setLookDirection(0, 1.0);
-            p.pivot.puyo.triggerStretch(0.3);
-            this.fallingPuyos.push({
-                puyo: p.pivot.puyo,
-                col: p.pivot.x,
-                currentY: p.pivot.y,
-                targetY: pivotGroundY,
-                vy: 0.15
-            });
-        }
+        // ペアが同じ列（縦向き）にあるか、異なる列（横向き）にあるかで分岐
+        if (p.pivot.x === p.child.x) {
+            // === 縦向きペアの場合 ===
+            const col = p.pivot.x;
+            const isPivotLower = p.pivot.y > p.child.y;
+            const lower = isPivotLower ? p.pivot : p.child;
+            const upper = isPivotLower ? p.child : p.pivot;
 
-        // 子ぷよの接地またはちぎり
-        if (childGroundY === p.child.y) {
-            this.grid[p.child.y][p.child.x] = p.child.puyo;
-            p.child.puyo.triggerSquash(0.45);
-            if (window.soundEngine && !chigiriOccurred) window.soundEngine.playLand();
+            // 下のぷよの接地先
+            const lowerGroundY = findGroundY(col, lower.y);
+            // 上のぷよは必ず下のぷよの1マス上！
+            const upperGroundY = lowerGroundY - 1;
+
+            // 下のぷよの処理
+            if (lowerGroundY === lower.y) {
+                this.grid[lower.y][col] = lower.puyo;
+                lower.puyo.triggerSquash(0.45);
+            } else {
+                chigiriOccurred = true;
+                lower.puyo.isFalling = true;
+                lower.puyo.setLookDirection(0, 1.0);
+                lower.puyo.triggerStretch(0.3);
+                this.fallingPuyos.push({
+                    puyo: lower.puyo,
+                    col: col,
+                    currentY: lower.y,
+                    targetY: lowerGroundY,
+                    vy: 0.15
+                });
+            }
+
+            // 上のぷよの処理
+            if (upperGroundY === upper.y) {
+                this.grid[upper.y][col] = upper.puyo;
+                upper.puyo.triggerSquash(0.45);
+            } else {
+                chigiriOccurred = true;
+                upper.puyo.isFalling = true;
+                upper.puyo.setLookDirection(0, 1.0);
+                upper.puyo.triggerStretch(0.3);
+                this.fallingPuyos.push({
+                    puyo: upper.puyo,
+                    col: col,
+                    currentY: upper.y,
+                    targetY: upperGroundY,
+                    vy: 0.15
+                });
+            }
+
+            if (chigiriOccurred) {
+                if (window.soundEngine) window.soundEngine.playChigiri();
+            } else {
+                if (window.soundEngine) window.soundEngine.playLand();
+            }
         } else {
-            chigiriOccurred = true;
-            p.child.puyo.isFalling = true;
-            p.child.puyo.setLookDirection(0, 1.0);
-            p.child.puyo.triggerStretch(0.3);
-            this.fallingPuyos.push({
-                puyo: p.child.puyo,
-                col: p.child.x,
-                currentY: p.child.y,
-                targetY: childGroundY,
-                vy: 0.15
-            });
+            // === 横向きペアの場合（列が異なる） ===
+            const pivotGroundY = findGroundY(p.pivot.x, p.pivot.y);
+            const childGroundY = findGroundY(p.child.x, p.child.y);
+
+            // 軸ぷよの接地またはちぎり
+            if (pivotGroundY === p.pivot.y) {
+                this.grid[p.pivot.y][p.pivot.x] = p.pivot.puyo;
+                p.pivot.puyo.triggerSquash(0.45);
+                if (window.soundEngine) window.soundEngine.playLand();
+            } else {
+                chigiriOccurred = true;
+                p.pivot.puyo.isFalling = true;
+                p.pivot.puyo.setLookDirection(0, 1.0);
+                p.pivot.puyo.triggerStretch(0.3);
+                this.fallingPuyos.push({
+                    puyo: p.pivot.puyo,
+                    col: p.pivot.x,
+                    currentY: p.pivot.y,
+                    targetY: pivotGroundY,
+                    vy: 0.15
+                });
+            }
+
+            // 子ぷよの接地またはちぎり
+            if (childGroundY === p.child.y) {
+                this.grid[p.child.y][p.child.x] = p.child.puyo;
+                p.child.puyo.triggerSquash(0.45);
+                if (window.soundEngine && !chigiriOccurred) window.soundEngine.playLand();
+            } else {
+                chigiriOccurred = true;
+                p.child.puyo.isFalling = true;
+                p.child.puyo.setLookDirection(0, 1.0);
+                p.child.puyo.triggerStretch(0.3);
+                this.fallingPuyos.push({
+                    puyo: p.child.puyo,
+                    col: p.child.x,
+                    currentY: p.child.y,
+                    targetY: childGroundY,
+                    vy: 0.15
+                });
+            }
+
+            if (chigiriOccurred) {
+                if (window.soundEngine) window.soundEngine.playChigiri();
+            }
         }
 
         if (chigiriOccurred) {
-            if (window.soundEngine) window.soundEngine.playChigiri();
             this.state = 'CHIGIRI_FALL';
         } else {
             this.updateAllConnections();
