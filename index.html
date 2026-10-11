@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ぷよぷよ完全再現 - Procedural Slime Puyo</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- ヘッダー -->
+        <header>
+            <h1 class="title-glow">PUYO PUYO</h1>
+            <div class="subtitle">PROCEDURAL SLIME SIMULATOR</div>
+        </header>
+
+        <!-- メインゲームレイアウト -->
+        <div class="game-layout">
+            <!-- 左パネル: ステータス＆操作ガイド -->
+            <div class="side-panel">
+                <div class="panel-card">
+                    <div class="panel-title">SCORE</div>
+                    <div id="score-val" class="stat-value">0</div>
+                </div>
+
+                <div class="panel-card">
+                    <div class="panel-title">MAX CHAIN</div>
+                    <div id="chain-val" class="stat-value" style="color: #f59e0b;">0</div>
+                </div>
+
+                <div class="panel-card">
+                    <div class="panel-title">POPPED</div>
+                    <div id="popped-val" class="stat-value" style="color: #10b981;">0</div>
+                </div>
+
+                <div class="panel-card">
+                    <div class="panel-title">CONTROLS</div>
+                    <div class="key-guide">
+                        <div class="key-row">
+                            <span>移動</span>
+                            <span class="key-badge">← → / A D</span>
+                        </div>
+                        <div class="key-row">
+                            <span>高速落下</span>
+                            <span class="key-badge">↓ / S</span>
+                        </div>
+                        <div class="key-row">
+                            <span>即時落下</span>
+                            <span class="key-badge">Space</span>
+                        </div>
+                        <div class="key-row">
+                            <span>右回転</span>
+                            <span class="key-badge">↑ / X</span>
+                        </div>
+                        <div class="key-row">
+                            <span>左回転</span>
+                            <span class="key-badge">Z / Ctrl</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="btn-row">
+                    <button id="btn-restart" class="game-btn primary">🔄 リセット</button>
+                    <button id="btn-sound" class="game-btn">🔊 音: ON</button>
+                </div>
+            </div>
+
+            <!-- 中央: ゲームボード -->
+            <div class="board-container">
+                <canvas id="game-canvas"></canvas>
+            </div>
+
+            <!-- 右パネル: NEXT & ネクネク表示 -->
+            <div class="right-panel">
+                <div class="panel-card next-box">
+                    <canvas id="next-canvas"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- モバイル・タッチ用コントローラー -->
+        <div class="touch-controls">
+            <div class="touch-grid">
+                <div class="dpad">
+                    <div></div>
+                    <button class="touch-btn" id="btn-hard-drop">⚡</button>
+                    <div></div>
+                    <button class="touch-btn" id="btn-move-left">◀</button>
+                    <button class="touch-btn" id="btn-soft-drop">▼</button>
+                    <button class="touch-btn" id="btn-move-right">▶</button>
+                    <div></div>
+                    <div></div>
+                    <div></div>
+                </div>
+                <div class="action-buttons">
+                    <button class="touch-btn rot" id="btn-rot-left">↶ Z</button>
+                    <button class="touch-btn rot" id="btn-rot-right">↷ X</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- スクリプト群 -->
+    <script src="audio.js"></script>
+    <script src="particles.js"></script>
+    <script src="puyo.js"></script>
+    <script src="game.js"></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('game-canvas');
+            const nextCanvas = document.getElementById('next-canvas');
+            const game = new PuyoGame(canvas, nextCanvas);
+            window.game = game;
+
+            // リスタートボタン
+            document.getElementById('btn-restart').addEventListener('click', () => {
+                if (window.soundEngine) window.soundEngine.resume();
+                game.reset();
+            });
+
+            // サウンド切り替え
+            const soundBtn = document.getElementById('btn-sound');
+            soundBtn.addEventListener('click', () => {
+                if (window.soundEngine) {
+                    window.soundEngine.resume();
+                    const muted = window.soundEngine.toggleMute();
+                    soundBtn.textContent = muted ? '🔇 音: OFF' : '🔊 音: ON';
+                }
+            });
+
+            // タッチコントローラーのバインド
+            const bindTouch = (id, onDown, onUp) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                const down = (e) => {
+                    e.preventDefault();
+                    if (window.soundEngine) window.soundEngine.resume();
+                    onDown();
+                };
+                const up = (e) => {
+                    e.preventDefault();
+                    if (onUp) onUp();
+                };
+                el.addEventListener('touchstart', down, { passive: false });
+                el.addEventListener('touchend', up, { passive: false });
+                el.addEventListener('mousedown', down);
+                el.addEventListener('mouseup', up);
+            };
+
+            bindTouch('btn-move-left', () => game.movePair(-1));
+            bindTouch('btn-move-right', () => game.movePair(1));
+            bindTouch('btn-soft-drop', 
+                () => { game.fastDrop = true; }, 
+                () => { game.fastDrop = false; }
+            );
+            bindTouch('btn-hard-drop', () => game.hardDrop());
+            bindTouch('btn-rot-right', () => game.rotatePair(1));
+            bindTouch('btn-rot-left', () => game.rotatePair(-1));
+
+            // 初回クリック時にWeb Audio有効化
+            window.addEventListener('pointerdown', () => {
+                if (window.soundEngine) window.soundEngine.resume();
+            }, { once: true });
+
+            game.start();
+        });
+    </script>
+</body>
+</html>

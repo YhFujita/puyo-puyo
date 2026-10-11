@@ -1,0 +1,300 @@
+@import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@700;900&family=Outfit:wght@600;800;900&display=swap');
+
+:root {
+    --bg-dark: #0b0f19;
+    --card-bg: rgba(26, 33, 56, 0.7);
+    --card-border: rgba(255, 255, 255, 0.12);
+    --board-bg: #070913;
+    --text-primary: #f8fafc;
+    --text-muted: #94a3b8;
+    --accent-red: #ff3b5c;
+    --accent-blue: #0ea5e9;
+    --accent-green: #10b981;
+    --accent-yellow: #f59e0b;
+    --accent-purple: #a855f7;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+body {
+    background: radial-gradient(circle at 50% 20%, #171d33 0%, var(--bg-dark) 100%);
+    font-family: 'Outfit', 'M PLUS Rounded 1c', sans-serif;
+    color: var(--text-primary);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow-x: hidden;
+    padding: 16px;
+}
+
+/* メインコンテナ */
+.app-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    max-width: 900px;
+    width: 100%;
+}
+
+/* タイトルヘッダー */
+header {
+    text-align: center;
+    position: relative;
+}
+
+.title-glow {
+    font-size: 2.4rem;
+    font-weight: 900;
+    letter-spacing: 2px;
+    background: linear-gradient(135deg, #ff3b5c, #f59e0b, #10b981, #0ea5e9, #a855f7);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 16px rgba(245, 158, 11, 0.4));
+    display: inline-block;
+}
+
+.subtitle {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-weight: 700;
+    letter-spacing: 1px;
+    margin-top: 2px;
+}
+
+/* ゲームエリアレイアウト */
+.game-layout {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 20px;
+    width: 100%;
+}
+
+/* 左側サイドパネル (操作ガイド & 設定) */
+.side-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 180px;
+}
+
+.panel-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    backdrop-filter: blur(12px);
+    border-radius: 14px;
+    padding: 14px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.panel-title {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-weight: 800;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.stat-value {
+    font-size: 1.6rem;
+    font-weight: 900;
+    color: #38bdf8;
+    text-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+}
+
+.key-guide {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 0.75rem;
+}
+
+.key-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.key-badge {
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #f1f5f9;
+}
+
+/* 中央ボードエリア */
+.board-container {
+    position: relative;
+    background: var(--board-bg);
+    border-radius: 16px;
+    padding: 6px;
+    box-shadow: 0 0 35px rgba(14, 165, 233, 0.25), 0 12px 32px rgba(0, 0, 0, 0.8);
+    border: 2px solid rgba(14, 165, 233, 0.35);
+}
+
+#game-canvas {
+    display: block;
+    border-radius: 12px;
+    background: #090d1a;
+}
+
+/* 右側サイドパネル (NEXT & スコア) */
+.right-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 140px;
+}
+
+.next-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px;
+}
+
+#next-canvas {
+    display: block;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.35);
+}
+
+/* ボタン類 */
+.btn-row {
+    display: flex;
+    gap: 8px;
+}
+
+.game-btn {
+    flex: 1;
+    background: linear-gradient(135deg, #1e293b, #0f172a);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-weight: 700;
+    font-size: 0.85rem;
+    padding: 8px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.game-btn:hover {
+    background: linear-gradient(135deg, #334155, #1e293b);
+    border-color: rgba(255, 255, 255, 0.3);
+    transform: translateY(-1px);
+}
+
+.game-btn:active {
+    transform: translateY(1px);
+}
+
+.game-btn.primary {
+    background: linear-gradient(135deg, #ff3b5c, #b91c3d);
+    border-color: rgba(255, 59, 92, 0.5);
+    box-shadow: 0 4px 14px rgba(255, 59, 92, 0.4);
+}
+
+.game-btn.primary:hover {
+    background: linear-gradient(135deg, #ff5c77, #d91d45);
+}
+
+/* モバイル用オンスクリーンコントローラー */
+.touch-controls {
+    display: none;
+    width: 100%;
+    max-width: 480px;
+    margin-top: 8px;
+    touch-action: manipulation;
+}
+
+.touch-grid {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    padding: 0 10px;
+}
+
+.dpad {
+    display: grid;
+    grid-template-columns: repeat(3, 56px);
+    grid-template-rows: repeat(3, 52px);
+    gap: 4px;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 12px;
+}
+
+.touch-btn {
+    background: rgba(30, 41, 59, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    color: white;
+    font-weight: 900;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.1s;
+}
+
+.touch-btn:active {
+    background: rgba(14, 165, 233, 0.6);
+    transform: scale(0.96);
+}
+
+.touch-btn.rot {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: rgba(245, 158, 11, 0.35);
+    border-color: rgba(245, 158, 11, 0.5);
+}
+
+.touch-btn.rot:active {
+    background: rgba(245, 158, 11, 0.7);
+}
+
+@media (max-width: 768px) {
+    .game-layout {
+        flex-direction: column;
+        align-items: center;
+    }
+    .side-panel {
+        display: none;
+    }
+    .right-panel {
+        flex-direction: row;
+        width: 100%;
+        max-width: 320px;
+        justify-content: space-between;
+    }
+    .touch-controls {
+        display: block;
+    }
+}
