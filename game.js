@@ -1,104 +1,87 @@
 /**
- * game.js - ぷよぷよゲームエンジン
- * 盤面管理、組ぷよ操作、回転キック、ちぎり落下物理、
- * 4個消去、連鎖ループ判定、公式スコア計算、全消し判定
+ * game.js - ぷよぷよ統合ゲームエンジン
+ * 1Pソロ / CPU対戦、クラシック(6x12) / ワイド(8x14)フィールド、
+ * おじゃまぷよ相殺システム、ポーズ機能(Esc)、タイトル画面連携
  */
-
-// 定数定義
-const COLS = 6;
-const ROWS = 12;      // 表示される段数
-const GHOST_ROWS = 1;  // 最上段の隠し段 (y = 0)
-const TOTAL_ROWS = ROWS + GHOST_ROWS; // 13段
-const CELL_SIZE = 48; // セルピクセルサイズ
-
-// 窒息判定地点 (左から3列目、0-indexedで2、表示最上段のy = 1)
-const DEATH_COL = 2;
-const DEATH_ROW = 1;
 
 // ぷよ通連鎖ボーナス倍率テーブル
 const CHAIN_BONUS_TABLE = [
     0,   0,   8,  16,  32,  64,  96, 128, 160, 192,
     224, 256, 288, 320, 352, 384, 416, 448, 480, 512
 ];
-
-// 連結数ボーナス (4連結=0, 5連結=2, 6連結=3, 7連結=4, 8連結=5, 9連結=6, 10連結=7, 11以上=10)
 const CONNECT_BONUS_TABLE = [0, 0, 0, 0, 0, 2, 3, 4, 5, 6, 7, 10];
-
-// 色数ボーナス (1色=0, 2色=3, 3色=6, 4色=12, 5色=24)
 const COLOR_BONUS_TABLE = [0, 0, 3, 6, 12, 24];
 
-class PuyoGame {
-    constructor(canvas, nextCanvas) {
+class PuyoBoard {
+    constructor(canvas, nextCanvas, options = {}) {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
         this.nextCanvas = nextCanvas;
         this.nextCtx = nextCanvas.getContext('2d');
 
-        // キャンバスサイズ設定
-        this.width = COLS * CELL_SIZE;
-        this.height = ROWS * CELL_SIZE;
+        this.isCPU = options.isCPU || false;
+        this.difficulty = options.difficulty || 'normal';
+        this.cols = options.cols || 6;
+        this.rows = options.rows || 12;
+        this.ghostRows = 1;
+        this.totalRows = this.rows + this.ghostRows;
+
+        this.deathCol = Math.floor(this.cols / 2) - 1; // 6列なら2, 8列なら3
+        this.deathRow = 1;
+
+        // セルサイズ（ワイド時は少し調整）
+        this.cellSize = options.cellSize || (this.cols === 8 ? 40 : 44);
+
+        this.width = this.cols * this.cellSize;
+        this.height = this.rows * this.cellSize;
         this.canvas.width = this.width;
         this.canvas.height = this.height;
 
-        this.nextCanvas.width = CELL_SIZE * 2 + 16;
-        this.nextCanvas.height = CELL_SIZE * 5 + 24;
+        this.nextCanvas.width = this.cellSize * 2 + 16;
+        this.nextCanvas.height = this.cellSize * 5 + 20;
 
-        // グリッド初期化 (TOTAL_ROWS x COLS)
+        // グリッド初期化
         this.grid = [];
-        for (let y = 0; y < TOTAL_ROWS; y++) {
-            this.grid[y] = new Array(COLS).fill(null);
-        }
+        this.initGrid();
 
-        // ペアキュー (NEXT, NEXT2)
+        // NEXTキュー
         this.nextQueue = [];
         this.initNextQueue();
 
-        // 操作中ペア
         this.activePair = null;
+        this.fallingPuyos = [];
+        this.clearingGroups = [];
 
-        // 状態遷移:
-        // 'SPAWN', 'CONTROLLING', 'CHIGIRI_FALL', 'CHECK_CLEAR', 'CLEAR_ANIM', 'CHAIN_FALL', 'GAME_OVER'
+        // 状態: 'SPAWN', 'CONTROLLING', 'CHIGIRI_FALL', 'CHECK_CLEAR', 'CLEAR_ANIM', 'CHAIN_FALL', 'DROP_OJAMA', 'GAME_OVER'
         this.state = 'SPAWN';
         this.stateTimer = 0;
-
-        // ちぎり・自由落下中のぷよリスト
-        // { puyo, col, currentY, targetY, vy }
-        this.fallingPuyos = [];
-
-        // 消去対象ぷよリスト
-        this.clearingGroups = [];
         this.clearingTimer = 0;
 
-        // 連鎖・スコア管理
+        // 連鎖・スコア
         this.chainCount = 0;
         this.score = 0;
         this.maxChain = 0;
         this.totalPopped = 0;
-        this.isAllClear = false;
         this.allClearBonusPending = false;
 
-        // 操作パラメータ
-        this.dropInterval = 45; // 通常落下速度（フレーム）
+        // おじゃまぷよシステム
+        this.pendingOjama = 0; // 相手から送られて保留中のおじゃまぷよ数
+        this.opponent = null;  // 対戦相手のPuyoBoard
+
+        // 操作設定
+        this.dropInterval = 45;
         this.dropTimer = 0;
         this.fastDrop = false;
 
-        // キー入力状態
-        this.keys = {
-            left: false,
-            right: false,
-            down: false,
-            rotateLeft: false,
-            rotateRight: false
-        };
-        this.keyRepeatTimer = {
-            left: 0,
-            right: 0
-        };
+        // AI
+        this.ai = this.isCPU ? new PuyoAI(this, this.difficulty) : null;
+    }
 
-        // アニメーションループ管理
-        this.animFrameId = null;
-
-        this.setupEventListeners();
+    initGrid() {
+        this.grid = [];
+        for (let y = 0; y < this.totalRows; y++) {
+            this.grid[y] = new Array(this.cols).fill(null);
+        }
     }
 
     initNextQueue() {
@@ -120,15 +103,8 @@ class PuyoGame {
         return next;
     }
 
-    start() {
-        this.reset();
-        this.loop();
-    }
-
     reset() {
-        for (let y = 0; y < TOTAL_ROWS; y++) {
-            this.grid[y] = new Array(COLS).fill(null);
-        }
+        this.initGrid();
         this.nextQueue = [];
         this.initNextQueue();
         this.activePair = null;
@@ -137,89 +113,20 @@ class PuyoGame {
         this.chainCount = 0;
         this.score = 0;
         this.totalPopped = 0;
-        this.isAllClear = false;
+        this.pendingOjama = 0;
         this.allClearBonusPending = false;
         this.state = 'SPAWN';
         this.stateTimer = 0;
         this.dropTimer = 0;
-        if (window.particleManager) {
-            window.particleManager.clear();
-        }
-        this.updateUI();
+        this.fastDrop = false;
     }
 
-    setupEventListeners() {
-        window.addEventListener('keydown', (e) => {
-            if (window.soundEngine) window.soundEngine.resume();
-            if (this.state === 'GAME_OVER') {
-                if (e.code === 'Space' || e.code === 'Enter') {
-                    this.reset();
-                }
-                return;
-            }
-
-            switch (e.code) {
-                case 'ArrowLeft':
-                case 'KeyA':
-                    if (!this.keys.left) {
-                        this.movePair(-1);
-                        this.keyRepeatTimer.left = 12;
-                    }
-                    this.keys.left = true;
-                    break;
-                case 'ArrowRight':
-                case 'KeyD':
-                    if (!this.keys.right) {
-                        this.movePair(1);
-                        this.keyRepeatTimer.right = 12;
-                    }
-                    this.keys.right = true;
-                    break;
-                case 'ArrowDown':
-                case 'KeyS':
-                    this.fastDrop = true;
-                    break;
-                case 'ArrowUp':
-                case 'KeyW':
-                case 'KeyX':
-                    this.rotatePair(1); // 右回転
-                    break;
-                case 'KeyZ':
-                case 'ControlLeft':
-                    this.rotatePair(-1); // 左回転
-                    break;
-                case 'Space':
-                    this.hardDrop();
-                    break;
-            }
-        });
-
-        window.addEventListener('keyup', (e) => {
-            switch (e.code) {
-                case 'ArrowLeft':
-                case 'KeyA':
-                    this.keys.left = false;
-                    this.keyRepeatTimer.left = 0;
-                    break;
-                case 'ArrowRight':
-                case 'KeyD':
-                    this.keys.right = false;
-                    this.keyRepeatTimer.right = 0;
-                    break;
-                case 'ArrowDown':
-                case 'KeyS':
-                    this.fastDrop = false;
-                    break;
-            }
-        });
+    setOpponent(opponentBoard) {
+        this.opponent = opponentBoard;
     }
 
-    /**
-     * 新しい組ぷよの出現 (SPAWN)
-     */
     spawnPair() {
-        // ゲームオーバー判定: 窒息地点にぷよがあるかチェック
-        if (this.grid[DEATH_ROW][DEATH_COL] !== null) {
+        if (this.grid[this.deathRow][this.deathCol] !== null) {
             this.gameOver();
             return;
         }
@@ -228,28 +135,28 @@ class PuyoGame {
         const pivotPuyo = next.pivotPuyo;
         const childPuyo = next.childPuyo;
 
-        // 軸ぷよ: x=2, y=1 (画面最上段)
-        // 子ぷよ: x=2, y=0 (ゴースト段)
         this.activePair = {
-            pivot: { x: DEATH_COL, y: 1, puyo: pivotPuyo },
-            child: { x: DEATH_COL, y: 0, puyo: childPuyo },
-            rot: 0 // 0: 上, 1: 右, 2: 下, 3: 左
+            pivot: { x: this.deathCol, y: 1, puyo: pivotPuyo },
+            child: { x: this.deathCol, y: 0, puyo: childPuyo },
+            rot: 0
         };
 
         this.updateActivePairConnections();
 
-        if (this.grid[1][DEATH_COL] !== null) {
+        if (this.grid[1][this.deathCol] !== null) {
             this.gameOver();
             return;
         }
 
         this.state = 'CONTROLLING';
         this.dropTimer = 0;
+
+        // CPU思考
+        if (this.isCPU && this.ai) {
+            this.ai.think(this.activePair, this.grid, this.cols, this.totalRows, this.deathCol);
+        }
     }
 
-    /**
-     * 操作中ペアが同色の場合の結合状態を更新
-     */
     updateActivePairConnections() {
         if (!this.activePair) return;
         const p = this.activePair;
@@ -261,30 +168,26 @@ class PuyoGame {
             return;
         }
 
-        // 軸ぷよに対する子ぷよの向き (rot: 0:上, 1:右, 2:下, 3:左)
         switch (p.rot) {
-            case 0: // 子ぷよは上
+            case 0:
                 p.pivot.puyo.setConnections(true, false, false, false);
                 p.child.puyo.setConnections(false, false, true, false);
                 break;
-            case 1: // 子ぷよは右
+            case 1:
                 p.pivot.puyo.setConnections(false, true, false, false);
                 p.child.puyo.setConnections(false, false, false, true);
                 break;
-            case 2: // 子ぷよは下
+            case 2:
                 p.pivot.puyo.setConnections(false, false, true, false);
                 p.child.puyo.setConnections(true, false, false, false);
                 break;
-            case 3: // 子ぷよは左
+            case 3:
                 p.pivot.puyo.setConnections(false, false, false, true);
                 p.child.puyo.setConnections(false, true, false, false);
                 break;
         }
     }
 
-    /**
-     * 組ぷよの横移動
-     */
     movePair(dx) {
         if (this.state !== 'CONTROLLING' || !this.activePair) return;
 
@@ -292,22 +195,18 @@ class PuyoGame {
         const newPivotX = p.pivot.x + dx;
         const newChildX = p.child.x + dx;
 
-        if (newPivotX < 0 || newPivotX >= COLS || newChildX < 0 || newChildX >= COLS) return;
+        if (newPivotX < 0 || newPivotX >= this.cols || newChildX < 0 || newChildX >= this.cols) return;
         if (this.isOccupied(newPivotX, p.pivot.y) || this.isOccupied(newChildX, p.child.y)) return;
 
         p.pivot.x = newPivotX;
         p.child.x = newChildX;
 
-        // 視線を移動方向に向ける
         p.pivot.puyo.setLookDirection(dx, 0);
         p.child.puyo.setLookDirection(dx, 0);
 
-        if (window.soundEngine) window.soundEngine.playMove();
+        if (!this.isCPU && window.soundEngine) window.soundEngine.playMove();
     }
 
-    /**
-     * 組ぷよの回転 (dir: 1 = 右回転, -1 = 左回転)
-     */
     rotatePair(dir) {
         if (this.state !== 'CONTROLLING' || !this.activePair) return;
 
@@ -324,27 +223,22 @@ class PuyoGame {
         let targetChildX = p.pivot.x + offsets[newRot].x;
         let targetChildY = p.pivot.y + offsets[newRot].y;
 
-        // 通常回転可能か
         if (this.canPlaceChild(targetChildX, targetChildY)) {
             p.child.x = targetChildX;
             p.child.y = targetChildY;
             p.rot = newRot;
             this.updateActivePairConnections();
-            if (window.soundEngine) window.soundEngine.playRotate();
+            if (!this.isCPU && window.soundEngine) window.soundEngine.playRotate();
             return;
         }
 
-        // 壁蹴り (Wall Kick) / 床蹴り (Floor Kick)
+        // 壁蹴り・床蹴り
         let kickX = 0;
         let kickY = 0;
 
-        if (offsets[newRot].x > 0 && (targetChildX >= COLS || this.isOccupied(targetChildX, targetChildY))) {
-            kickX = -1;
-        } else if (offsets[newRot].x < 0 && (targetChildX < 0 || this.isOccupied(targetChildX, targetChildY))) {
-            kickX = 1;
-        } else if (offsets[newRot].y > 0 && (targetChildY >= TOTAL_ROWS || this.isOccupied(targetChildX, targetChildY))) {
-            kickY = -1;
-        }
+        if (offsets[newRot].x > 0 && (targetChildX >= this.cols || this.isOccupied(targetChildX, targetChildY))) kickX = -1;
+        else if (offsets[newRot].x < 0 && (targetChildX < 0 || this.isOccupied(targetChildX, targetChildY))) kickX = 1;
+        else if (offsets[newRot].y > 0 && (targetChildY >= this.totalRows || this.isOccupied(targetChildX, targetChildY))) kickY = -1;
 
         const kickedPivotX = p.pivot.x + kickX;
         const kickedPivotY = p.pivot.y + kickY;
@@ -358,43 +252,39 @@ class PuyoGame {
             p.child.y = kickedChildY;
             p.rot = newRot;
             this.updateActivePairConnections();
-            if (window.soundEngine) window.soundEngine.playRotate();
+            if (!this.isCPU && window.soundEngine) window.soundEngine.playRotate();
             return;
         }
 
-        // 180度反転 (クイックターン)
-        const oppositeRot = (p.rot + 2) % 4;
-        const oppOffset = offsets[oppositeRot];
-        const oppChildX = p.pivot.x + oppOffset.x;
-        const oppChildY = p.pivot.y + oppOffset.y;
+        // クイックターン
+        const oppRot = (p.rot + 2) % 4;
+        const oppChildX = p.pivot.x + offsets[oppRot].x;
+        const oppChildY = p.pivot.y + offsets[oppRot].y;
 
         if (this.canPlaceChild(oppChildX, oppChildY)) {
             p.child.x = oppChildX;
             p.child.y = oppChildY;
-            p.rot = oppositeRot;
+            p.rot = oppRot;
             this.updateActivePairConnections();
-            if (window.soundEngine) window.soundEngine.playRotate();
+            if (!this.isCPU && window.soundEngine) window.soundEngine.playRotate();
         }
     }
 
     canPlacePivot(x, y) {
-        if (x < 0 || x >= COLS || y < 0 || y >= TOTAL_ROWS) return false;
+        if (x < 0 || x >= this.cols || y < 0 || y >= this.totalRows) return false;
         return !this.isOccupied(x, y);
     }
 
     canPlaceChild(x, y) {
-        if (x < 0 || x >= COLS || y < 0 || y >= TOTAL_ROWS) return false;
+        if (x < 0 || x >= this.cols || y < 0 || y >= this.totalRows) return false;
         return !this.isOccupied(x, y);
     }
 
     isOccupied(x, y) {
-        if (x < 0 || x >= COLS || y < 0 || y >= TOTAL_ROWS) return true;
+        if (x < 0 || x >= this.cols || y < 0 || y >= this.totalRows) return true;
         return this.grid[y][x] !== null;
     }
 
-    /**
-     * ハードドロップ（即時落下設置）
-     */
     hardDrop() {
         if (this.state !== 'CONTROLLING' || !this.activePair) return;
         while (this.canPairFall()) {
@@ -409,35 +299,15 @@ class PuyoGame {
         const nextPivotY = p.pivot.y + 1;
         const nextChildY = p.child.y + 1;
 
-        if (nextPivotY >= TOTAL_ROWS || this.isOccupied(p.pivot.x, nextPivotY)) return false;
-        if (nextChildY >= TOTAL_ROWS || this.isOccupied(p.child.x, nextChildY)) return false;
+        if (nextPivotY >= this.totalRows || this.isOccupied(p.pivot.x, nextPivotY)) return false;
+        if (nextChildY >= this.totalRows || this.isOccupied(p.child.x, nextChildY)) return false;
         return true;
     }
 
-    /**
-     * 操作ループ更新
-     */
     updateControlling() {
         const p = this.activePair;
         if (!p) return;
 
-        // キーリピート
-        if (this.keys.left) {
-            this.keyRepeatTimer.left--;
-            if (this.keyRepeatTimer.left <= 0) {
-                this.movePair(-1);
-                this.keyRepeatTimer.left = 4;
-            }
-        }
-        if (this.keys.right) {
-            this.keyRepeatTimer.right--;
-            if (this.keyRepeatTimer.right <= 0) {
-                this.movePair(1);
-                this.keyRepeatTimer.right = 4;
-            }
-        }
-
-        // 高速落下時は下を凝視
         if (this.fastDrop) {
             p.pivot.puyo.setLookDirection(0, 0.95);
             p.child.puyo.setLookDirection(0, 0.95);
@@ -458,7 +328,7 @@ class PuyoGame {
     }
 
     /**
-     * 接地ロック＆「ちぎり」判定
+     * 接地ロック＆ちぎり判定
      */
     lockPair() {
         const p = this.activePair;
@@ -466,7 +336,7 @@ class PuyoGame {
 
         const findGroundY = (x, startY) => {
             let y = startY;
-            while (y + 1 < TOTAL_ROWS && this.grid[y + 1][x] === null) {
+            while (y + 1 < this.totalRows && this.grid[y + 1][x] === null) {
                 y++;
             }
             return y;
@@ -474,20 +344,16 @@ class PuyoGame {
 
         let chigiriOccurred = false;
 
-        // ペアが同じ列（縦向き）にあるか、異なる列（横向き）にあるかで分岐
         if (p.pivot.x === p.child.x) {
-            // === 縦向きペアの場合 ===
+            // 縦向き
             const col = p.pivot.x;
             const isPivotLower = p.pivot.y > p.child.y;
             const lower = isPivotLower ? p.pivot : p.child;
             const upper = isPivotLower ? p.child : p.pivot;
 
-            // 下のぷよの接地先
             const lowerGroundY = findGroundY(col, lower.y);
-            // 上のぷよは必ず下のぷよの1マス上！
             const upperGroundY = lowerGroundY - 1;
 
-            // 下のぷよの処理
             if (lowerGroundY === lower.y) {
                 this.grid[lower.y][col] = lower.puyo;
                 lower.puyo.triggerSquash(0.45);
@@ -505,7 +371,6 @@ class PuyoGame {
                 });
             }
 
-            // 上のぷよの処理
             if (upperGroundY === upper.y) {
                 this.grid[upper.y][col] = upper.puyo;
                 upper.puyo.triggerSquash(0.45);
@@ -524,20 +389,19 @@ class PuyoGame {
             }
 
             if (chigiriOccurred) {
-                if (window.soundEngine) window.soundEngine.playChigiri();
+                if (!this.isCPU && window.soundEngine) window.soundEngine.playChigiri();
             } else {
-                if (window.soundEngine) window.soundEngine.playLand();
+                if (!this.isCPU && window.soundEngine) window.soundEngine.playLand();
             }
         } else {
-            // === 横向きペアの場合（列が異なる） ===
+            // 横向き
             const pivotGroundY = findGroundY(p.pivot.x, p.pivot.y);
             const childGroundY = findGroundY(p.child.x, p.child.y);
 
-            // 軸ぷよの接地またはちぎり
             if (pivotGroundY === p.pivot.y) {
                 this.grid[p.pivot.y][p.pivot.x] = p.pivot.puyo;
                 p.pivot.puyo.triggerSquash(0.45);
-                if (window.soundEngine) window.soundEngine.playLand();
+                if (!this.isCPU && window.soundEngine) window.soundEngine.playLand();
             } else {
                 chigiriOccurred = true;
                 p.pivot.puyo.isFalling = true;
@@ -552,11 +416,10 @@ class PuyoGame {
                 });
             }
 
-            // 子ぷよの接地またはちぎり
             if (childGroundY === p.child.y) {
                 this.grid[p.child.y][p.child.x] = p.child.puyo;
                 p.child.puyo.triggerSquash(0.45);
-                if (window.soundEngine && !chigiriOccurred) window.soundEngine.playLand();
+                if (!this.isCPU && window.soundEngine && !chigiriOccurred) window.soundEngine.playLand();
             } else {
                 chigiriOccurred = true;
                 p.child.puyo.isFalling = true;
@@ -572,7 +435,7 @@ class PuyoGame {
             }
 
             if (chigiriOccurred) {
-                if (window.soundEngine) window.soundEngine.playChigiri();
+                if (!this.isCPU && window.soundEngine) window.soundEngine.playChigiri();
             }
         }
 
@@ -585,16 +448,13 @@ class PuyoGame {
         }
     }
 
-    /**
-     * ちぎれ落下・自由落下の物理更新
-     */
     updateFallingPuyos() {
         if (this.fallingPuyos.length === 0) {
             this.updateAllConnections();
             return true;
         }
 
-        const gravity = 0.05;
+        const gravity = 0.055;
         let allLanded = true;
 
         for (let i = 0; i < this.fallingPuyos.length; i++) {
@@ -607,7 +467,7 @@ class PuyoGame {
                 item.puyo.isFalling = false;
                 item.puyo.triggerSquash(0.5);
                 this.grid[item.targetY][item.col] = item.puyo;
-                if (window.soundEngine) window.soundEngine.playLand();
+                if (!this.isCPU && window.soundEngine) window.soundEngine.playLand();
             } else {
                 allLanded = false;
             }
@@ -622,19 +482,22 @@ class PuyoGame {
         return false;
     }
 
-    /**
-     * 盤面上の全ぷよの接続（上下左右の同色判定）を再計算
-     */
     updateAllConnections() {
-        for (let y = 0; y < TOTAL_ROWS; y++) {
-            for (let x = 0; x < COLS; x++) {
+        for (let y = 0; y < this.totalRows; y++) {
+            for (let x = 0; x < this.cols; x++) {
                 const p = this.grid[y][x];
                 if (!p) continue;
+
+                // おじゃまぷよは連結しない
+                if (p.colorKey === 'OJAMA') {
+                    p.setConnections(false, false, false, false);
+                    continue;
+                }
 
                 const isSameColor = (ox, oy) => {
                     const nx = x + ox;
                     const ny = y + oy;
-                    if (nx < 0 || nx >= COLS || ny < 0 || ny >= TOTAL_ROWS) return false;
+                    if (nx < 0 || nx >= this.cols || ny < 0 || ny >= this.totalRows) return false;
                     const neighbor = this.grid[ny][nx];
                     return neighbor && neighbor.colorKey === p.colorKey;
                 };
@@ -649,17 +512,14 @@ class PuyoGame {
         }
     }
 
-    /**
-     * 4つ以上の連結グループをBFS探索
-     */
     findClearableGroups() {
-        const visited = Array.from({ length: TOTAL_ROWS }, () => new Array(COLS).fill(false));
+        const visited = Array.from({ length: this.totalRows }, () => new Array(this.cols).fill(false));
         const groups = [];
 
-        for (let y = 0; y < TOTAL_ROWS; y++) {
-            for (let x = 0; x < COLS; x++) {
+        for (let y = 0; y < this.totalRows; y++) {
+            for (let x = 0; x < this.cols; x++) {
                 const startPuyo = this.grid[y][x];
-                if (!startPuyo || visited[y][x]) continue;
+                if (!startPuyo || startPuyo.colorKey === 'OJAMA' || visited[y][x]) continue;
 
                 const group = [];
                 const queue = [{ x, y }];
@@ -680,7 +540,7 @@ class PuyoGame {
                     for (const d of dirs) {
                         const nx = cur.x + d.dx;
                         const ny = cur.y + d.dy;
-                        if (nx >= 0 && nx < COLS && ny >= 0 && ny < TOTAL_ROWS) {
+                        if (nx >= 0 && nx < this.cols && ny >= 0 && ny < this.totalRows) {
                             if (!visited[ny][nx] && this.grid[ny][nx] && this.grid[ny][nx].colorKey === color) {
                                 visited[ny][nx] = true;
                                 queue.push({ x: nx, y: ny });
@@ -698,24 +558,38 @@ class PuyoGame {
         return groups;
     }
 
-    /**
-     * 消去前アニメーション開始
-     */
     triggerClearAnimation(groups) {
         this.clearingGroups = groups;
         this.state = 'CLEAR_ANIM';
-        this.clearingTimer = 36;
+        this.clearingTimer = 34;
 
+        // 隣接するおじゃまぷよも巻き込み消去に含める
+        const ojamaToClear = new Set();
         for (const grp of groups) {
             for (const item of grp) {
                 item.puyo.startClear();
+
+                const dirs = [{ dx: 0, dy: -1 }, { dx: 1, dy: 0 }, { dx: 0, dy: 1 }, { dx: -1, dy: 0 }];
+                for (const d of dirs) {
+                    const nx = item.x + d.dx;
+                    const ny = item.y + d.dy;
+                    if (nx >= 0 && nx < this.cols && ny >= 0 && ny < this.totalRows) {
+                        const neighbor = this.grid[ny][nx];
+                        if (neighbor && neighbor.colorKey === 'OJAMA') {
+                            ojamaToClear.add({ x: nx, y: ny, puyo: neighbor });
+                        }
+                    }
+                }
             }
+        }
+
+        // おじゃまぷよの巻き込みアニメーション
+        for (const oj of ojamaToClear) {
+            oj.puyo.startClear();
+            this.clearingGroups.push([oj]);
         }
     }
 
-    /**
-     * ぷよ消去の実行と得点計算
-     */
     executeClear() {
         this.chainCount++;
         if (this.chainCount > this.maxChain) {
@@ -727,25 +601,29 @@ class PuyoGame {
         let totalConnectBonus = 0;
 
         for (const grp of this.clearingGroups) {
-            totalPuyosInChain += grp.length;
-            colorSet.add(grp[0].puyo.colorKey);
-
-            const connIdx = Math.min(grp.length, CONNECT_BONUS_TABLE.length - 1);
-            totalConnectBonus += CONNECT_BONUS_TABLE[connIdx];
-
             for (const item of grp) {
-                const px = item.x * CELL_SIZE + CELL_SIZE * 0.5;
-                const py = (item.y - GHOST_ROWS) * CELL_SIZE + CELL_SIZE * 0.5;
+                if (item.puyo.colorKey !== 'OJAMA') {
+                    totalPuyosInChain++;
+                    colorSet.add(item.puyo.colorKey);
+                }
+
+                const px = item.x * this.cellSize + this.cellSize * 0.5;
+                const py = (item.y - this.ghostRows) * this.cellSize + this.cellSize * 0.5;
                 if (window.particleManager) {
                     window.particleManager.createPopEffect(px, py, item.puyo.colorData);
                 }
                 this.grid[item.y][item.x] = null;
             }
+
+            if (grp[0].puyo.colorKey !== 'OJAMA') {
+                const connIdx = Math.min(grp.length, CONNECT_BONUS_TABLE.length - 1);
+                totalConnectBonus += CONNECT_BONUS_TABLE[connIdx];
+            }
         }
 
         this.totalPopped += totalPuyosInChain;
 
-        if (window.soundEngine) {
+        if (!this.isCPU && window.soundEngine) {
             window.soundEngine.playPop(this.chainCount);
             window.soundEngine.playChain(this.chainCount);
         }
@@ -754,10 +632,10 @@ class PuyoGame {
         const textColors = ['#fbbf24', '#f87171', '#60a5fa', '#34d399', '#c084fc', '#f43f5e'];
         const color = textColors[(this.chainCount - 1) % textColors.length];
         if (window.particleManager) {
-            window.particleManager.addText(this.width * 0.5, this.height * 0.35, chainText, color, 34 + Math.min(this.chainCount * 3, 20));
+            window.particleManager.addText(this.width * 0.5, this.height * 0.35, chainText, color, 30 + Math.min(this.chainCount * 3, 18));
         }
 
-        // ぷよ通公式スコア計算
+        // スコア計算
         const chainIdx = Math.min(this.chainCount, CHAIN_BONUS_TABLE.length - 1);
         const chainBonus = CHAIN_BONUS_TABLE[chainIdx];
         const colorIdx = Math.min(colorSet.size, COLOR_BONUS_TABLE.length - 1);
@@ -774,21 +652,54 @@ class PuyoGame {
         }
 
         this.score += points;
-        this.updateUI();
+
+        // 対戦時: おじゃまぷよの発生＆相殺システム！
+        if (this.opponent) {
+            const ojamaGenerated = Math.floor(points / 70);
+            if (ojamaGenerated > 0) {
+                this.handleOjamaAttack(ojamaGenerated);
+            }
+        }
 
         this.clearingGroups = [];
         this.setupChainFall();
     }
 
     /**
-     * 空中に残されたぷよの自由落下準備
+     * おじゃまぷよの攻撃＆相殺処理
      */
+    handleOjamaAttack(amount) {
+        // 1. まず自分に送られているおじゃまぷよ（pendingOjama）を相殺！
+        if (this.pendingOjama > 0) {
+            if (amount >= this.pendingOjama) {
+                // 完全相殺＆余りを相手へ送る！
+                const surplus = amount - this.pendingOjama;
+                this.pendingOjama = 0;
+                if (surplus > 0 && this.opponent) {
+                    this.opponent.receiveOjama(surplus);
+                }
+            } else {
+                // 一部相殺
+                this.pendingOjama -= amount;
+            }
+        } else {
+            // 相殺なし、そのまま相手へ送信
+            if (this.opponent) {
+                this.opponent.receiveOjama(amount);
+            }
+        }
+    }
+
+    receiveOjama(amount) {
+        this.pendingOjama += amount;
+    }
+
     setupChainFall() {
         this.fallingPuyos = [];
 
-        for (let x = 0; x < COLS; x++) {
-            let writeY = TOTAL_ROWS - 1;
-            for (let y = TOTAL_ROWS - 1; y >= 0; y--) {
+        for (let x = 0; x < this.cols; x++) {
+            let writeY = this.totalRows - 1;
+            for (let y = this.totalRows - 1; y >= 0; y--) {
                 const p = this.grid[y][x];
                 if (p !== null) {
                     if (y !== writeY) {
@@ -816,13 +727,10 @@ class PuyoGame {
         }
     }
 
-    /**
-     * 連鎖終了または全消し判定
-     */
     checkChainEndOrAllClear() {
         let hasAnyPuyo = false;
-        for (let y = 0; y < TOTAL_ROWS; y++) {
-            for (let x = 0; x < COLS; x++) {
+        for (let y = 0; y < this.totalRows; y++) {
+            for (let x = 0; x < this.cols; x++) {
                 if (this.grid[y][x] !== null) {
                     hasAnyPuyo = true;
                     break;
@@ -834,45 +742,81 @@ class PuyoGame {
         if (!hasAnyPuyo && this.chainCount > 0) {
             this.isAllClear = true;
             this.allClearBonusPending = true;
-            if (window.soundEngine) window.soundEngine.playAllClear();
+            if (!this.isCPU && window.soundEngine) window.soundEngine.playAllClear();
             if (window.particleManager) {
                 window.particleManager.addText(this.width * 0.5, this.height * 0.45, '★ ALL CLEAR! ★', '#fbbf24', 36);
             }
         }
 
         this.chainCount = 0;
-        this.state = 'SPAWN';
-    }
 
-    /**
-     * ゲームオーバー処理
-     */
-    gameOver() {
-        this.state = 'GAME_OVER';
-        if (window.soundEngine) window.soundEngine.playGameOver();
-        if (window.particleManager) {
-            window.particleManager.addText(this.width * 0.5, this.height * 0.45, 'GAME OVER', '#ef4444', 38);
+        // 連鎖終了後、おじゃまぷよが保留されていれば上から降らせる！
+        if (this.pendingOjama > 0) {
+            this.state = 'DROP_OJAMA';
+            this.stateTimer = 10;
+        } else {
+            this.state = 'SPAWN';
         }
     }
 
     /**
-     * メインループ
+     * 保留中のおじゃまぷよを降らせる
      */
-    loop() {
-        this.update();
-        this.draw();
-        this.animFrameId = requestAnimationFrame(() => this.loop());
+    dropOjama() {
+        const dropCount = Math.min(this.pendingOjama, this.cols * 5); // 1回につき最大5段
+        this.pendingOjama -= dropCount;
+
+        // 列ごとに均等に落とす
+        const colsToDrop = [];
+        for (let i = 0; i < dropCount; i++) {
+            colsToDrop.push(i % this.cols);
+        }
+
+        this.fallingPuyos = [];
+
+        for (const col of colsToDrop) {
+            let targetY = this.totalRows - 1;
+            while (targetY >= 0 && this.grid[targetY][col] !== null) {
+                targetY--;
+            }
+            if (targetY >= 0) {
+                const ojamaPuyo = new Puyo('OJAMA');
+                ojamaPuyo.isFalling = true;
+                this.fallingPuyos.push({
+                    puyo: ojamaPuyo,
+                    col: col,
+                    currentY: 0,
+                    targetY: targetY,
+                    vy: 0.15
+                });
+            }
+        }
+
+        if (this.fallingPuyos.length > 0) {
+            this.state = 'CHIGIRI_FALL';
+        } else {
+            this.state = 'SPAWN';
+        }
+    }
+
+    gameOver() {
+        this.state = 'GAME_OVER';
+        if (!this.isCPU && window.soundEngine) window.soundEngine.playGameOver();
+        if (window.particleManager) {
+            window.particleManager.addText(this.width * 0.5, this.height * 0.45, this.isCPU ? 'CPU LOSE' : 'GAME OVER', '#ef4444', 36);
+        }
     }
 
     update() {
-        if (window.particleManager) window.particleManager.update();
-
         switch (this.state) {
             case 'SPAWN':
                 this.spawnPair();
                 break;
 
             case 'CONTROLLING':
+                if (this.isCPU && this.ai) {
+                    this.ai.update();
+                }
                 this.updateControlling();
                 break;
 
@@ -909,60 +853,59 @@ class PuyoGame {
                 }
                 break;
 
+            case 'DROP_OJAMA':
+                this.stateTimer--;
+                if (this.stateTimer <= 0) {
+                    this.dropOjama();
+                }
+                break;
+
             case 'GAME_OVER':
                 break;
         }
     }
 
-    /**
-     * 描画
-     */
     draw() {
         this.ctx.clearRect(0, 0, this.width, this.height);
 
-        // 1. 背景グリッド
+        // 背景グリッド
         this.drawBoardGrid();
 
-        // 2. 着地予測ゴースト（半透明プレビュー）
+        // 着地予測ゴースト
         if (this.state === 'CONTROLLING' && this.activePair) {
             this.drawGhostPair();
         }
 
-        // 3. 盤面上の確定ぷよ
-        for (let y = GHOST_ROWS; y < TOTAL_ROWS; y++) {
-            for (let x = 0; x < COLS; x++) {
+        // 盤面上の確定ぷよ
+        for (let y = this.ghostRows; y < this.totalRows; y++) {
+            for (let x = 0; x < this.cols; x++) {
                 const puyo = this.grid[y][x];
                 if (puyo) {
-                    const cx = x * CELL_SIZE + CELL_SIZE * 0.5;
-                    const cy = (y - GHOST_ROWS) * CELL_SIZE + CELL_SIZE * 0.5;
-                    puyo.draw(this.ctx, cx, cy, CELL_SIZE);
+                    const cx = x * this.cellSize + this.cellSize * 0.5;
+                    const cy = (y - this.ghostRows) * this.cellSize + this.cellSize * 0.5;
+                    puyo.draw(this.ctx, cx, cy, this.cellSize);
                 }
             }
         }
 
-        // 4. ちぎり・自由落下中のぷよ
+        // 落下中ぷよ
         for (const item of this.fallingPuyos) {
-            if (item.currentY >= GHOST_ROWS - 0.5) {
-                const cx = item.col * CELL_SIZE + CELL_SIZE * 0.5;
-                const cy = (item.currentY - GHOST_ROWS) * CELL_SIZE + CELL_SIZE * 0.5;
-                item.puyo.draw(this.ctx, cx, cy, CELL_SIZE);
+            if (item.currentY >= this.ghostRows - 0.5) {
+                const cx = item.col * this.cellSize + this.cellSize * 0.5;
+                const cy = (item.currentY - this.ghostRows) * this.cellSize + this.cellSize * 0.5;
+                item.puyo.draw(this.ctx, cx, cy, this.cellSize);
             }
         }
 
-        // 5. 操作中の組ぷよ
+        // 操作中ペア
         if (this.state === 'CONTROLLING' && this.activePair) {
             this.drawActivePair();
         }
 
-        // 6. 窒息地点の赤い×印
+        // 窒息地点の赤い×印
         this.drawDeathMarker();
 
-        // 7. パーティクル・テキスト
-        if (window.particleManager) {
-            window.particleManager.draw(this.ctx);
-        }
-
-        // 8. ネクストぷよ描画
+        // ネクストぷよ
         this.drawNextPuyos();
     }
 
@@ -971,35 +914,31 @@ class PuyoGame {
         this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
         this.ctx.lineWidth = 1;
 
-        for (let x = 0; x <= COLS; x++) {
+        for (let x = 0; x <= this.cols; x++) {
             this.ctx.beginPath();
-            this.ctx.moveTo(x * CELL_SIZE, 0);
-            this.ctx.lineTo(x * CELL_SIZE, this.height);
+            this.ctx.moveTo(x * this.cellSize, 0);
+            this.ctx.lineTo(x * this.cellSize, this.height);
             this.ctx.stroke();
         }
-        for (let y = 0; y <= ROWS; y++) {
+        for (let y = 0; y <= this.rows; y++) {
             this.ctx.beginPath();
-            this.ctx.moveTo(0, y * CELL_SIZE);
-            this.ctx.lineTo(this.width, y * CELL_SIZE);
+            this.ctx.moveTo(0, y * this.cellSize);
+            this.ctx.lineTo(this.width, y * this.cellSize);
             this.ctx.stroke();
         }
         this.ctx.restore();
     }
 
-    /**
-     * 着地予測ゴースト（半透明のガイド枠）の描画
-     */
     drawGhostPair() {
         const p = this.activePair;
         if (!p) return;
 
-        // ペアがそのまま落ちたときの深さ
         let dropDistance = 0;
         while (true) {
             const nextPivotY = p.pivot.y + dropDistance + 1;
             const nextChildY = p.child.y + dropDistance + 1;
-            if (nextPivotY >= TOTAL_ROWS || this.isOccupied(p.pivot.x, nextPivotY) ||
-                nextChildY >= TOTAL_ROWS || this.isOccupied(p.child.x, nextChildY)) {
+            if (nextPivotY >= this.totalRows || this.isOccupied(p.pivot.x, nextPivotY) ||
+                nextChildY >= this.totalRows || this.isOccupied(p.child.x, nextChildY)) {
                 break;
             }
             dropDistance++;
@@ -1008,11 +947,11 @@ class PuyoGame {
         if (dropDistance === 0) return;
 
         const drawGhostAt = (col, row, colorData) => {
-            const displayY = row - GHOST_ROWS;
+            const displayY = row - this.ghostRows;
             if (displayY < 0) return;
-            const cx = col * CELL_SIZE + CELL_SIZE * 0.5;
-            const cy = displayY * CELL_SIZE + CELL_SIZE * 0.5;
-            const r = CELL_SIZE * 0.4;
+            const cx = col * this.cellSize + this.cellSize * 0.5;
+            const cy = displayY * this.cellSize + this.cellSize * 0.5;
+            const r = this.cellSize * 0.4;
 
             this.ctx.save();
             this.ctx.globalAlpha = 0.25;
@@ -1030,8 +969,8 @@ class PuyoGame {
     }
 
     drawDeathMarker() {
-        const cx = DEATH_COL * CELL_SIZE + CELL_SIZE * 0.5;
-        const cy = (DEATH_ROW - GHOST_ROWS) * CELL_SIZE + CELL_SIZE * 0.5;
+        const cx = this.deathCol * this.cellSize + this.cellSize * 0.5;
+        const cy = (this.deathRow - this.ghostRows) * this.cellSize + this.cellSize * 0.5;
 
         this.ctx.save();
         this.ctx.strokeStyle = 'rgba(239, 68, 68, 0.45)';
@@ -1049,10 +988,10 @@ class PuyoGame {
     drawActivePair() {
         const p = this.activePair;
         const drawSingle = (item) => {
-            if (item.y >= GHOST_ROWS - 0.5) {
-                const cx = item.x * CELL_SIZE + CELL_SIZE * 0.5;
-                const cy = (item.y - GHOST_ROWS) * CELL_SIZE + CELL_SIZE * 0.5;
-                item.puyo.draw(this.ctx, cx, cy, CELL_SIZE);
+            if (item.y >= this.ghostRows - 0.5) {
+                const cx = item.x * this.cellSize + this.cellSize * 0.5;
+                const cy = (item.y - this.ghostRows) * this.cellSize + this.cellSize * 0.5;
+                item.puyo.draw(this.ctx, cx, cy, this.cellSize);
             }
         };
 
@@ -1064,48 +1003,271 @@ class PuyoGame {
         this.nextCtx.clearRect(0, 0, this.nextCanvas.width, this.nextCanvas.height);
 
         const drawPairAt = (pair, startY, isSmall = false) => {
-            const scale = isSmall ? 0.75 : 0.95;
-            const size = CELL_SIZE * scale;
+            const scale = isSmall ? 0.72 : 0.9;
+            const size = this.cellSize * scale;
             const cx = this.nextCanvas.width * 0.5;
 
-            // 子ぷよ (上)
             pair.childPuyo.draw(this.nextCtx, cx, startY, size);
-            // 軸ぷよ (下)
             pair.pivotPuyo.draw(this.nextCtx, cx, startY + size * 0.9, size);
         };
 
-        // NEXT表示
         if (this.nextQueue.length > 0) {
             this.nextCtx.save();
             this.nextCtx.fillStyle = '#94a3b8';
-            this.nextCtx.font = 'bold 12px sans-serif';
+            this.nextCtx.font = 'bold 11px sans-serif';
             this.nextCtx.textAlign = 'center';
-            this.nextCtx.fillText('NEXT', this.nextCanvas.width * 0.5, 18);
-            drawPairAt(this.nextQueue[0], 48, false);
+            this.nextCtx.fillText('NEXT', this.nextCanvas.width * 0.5, 16);
+            drawPairAt(this.nextQueue[0], 44, false);
             this.nextCtx.restore();
         }
 
-        // NEXT2表示
         if (this.nextQueue.length > 1) {
             this.nextCtx.save();
             this.nextCtx.fillStyle = '#64748b';
-            this.nextCtx.font = 'bold 10px sans-serif';
+            this.nextCtx.font = 'bold 9px sans-serif';
             this.nextCtx.textAlign = 'center';
-            this.nextCtx.fillText('NEXT 2', this.nextCanvas.width * 0.5, 142);
-            drawPairAt(this.nextQueue[1], 168, true);
+            this.nextCtx.fillText('NEXT 2', this.nextCanvas.width * 0.5, 136);
+            drawPairAt(this.nextQueue[1], 160, true);
             this.nextCtx.restore();
         }
     }
+}
 
-    updateUI() {
-        const scoreEl = document.getElementById('score-val');
-        const chainEl = document.getElementById('chain-val');
-        const poppedEl = document.getElementById('popped-val');
+/**
+ * ゲーム全体の管理クラス (GameManager)
+ */
+class GameManager {
+    constructor() {
+        this.mode = 'solo'; // 'solo' or 'vs'
+        this.boardSize = 'classic'; // 'classic' (6x12) or 'wide' (8x14)
+        this.difficulty = 'normal'; // 'easy', 'normal', 'hard'
 
-        if (scoreEl) scoreEl.textContent = this.score.toLocaleString();
-        if (chainEl) chainEl.textContent = this.maxChain;
-        if (poppedEl) poppedEl.textContent = this.totalPopped;
+        this.appState = 'TITLE'; // 'TITLE', 'PLAYING', 'PAUSED'
+        this.isPaused = false;
+
+        this.playerBoard = null;
+        this.cpuBoard = null;
+
+        // キー入力管理
+        this.keys = { left: false, right: false, down: false };
+        this.keyRepeatTimer = { left: 0, right: 0 };
+
+        this.animFrameId = null;
+
+        this.setupKeyboardListeners();
+    }
+
+    setupKeyboardListeners() {
+        window.addEventListener('keydown', (e) => {
+            if (window.soundEngine) window.soundEngine.resume();
+            if (window.midiPlayer) window.midiPlayer.ensureAudioContext();
+
+            // Escキーでポーズ切り替え
+            if (e.code === 'Escape') {
+                if (this.appState === 'PLAYING') {
+                    this.togglePause();
+                } else if (this.appState === 'PAUSED') {
+                    this.togglePause();
+                }
+                return;
+            }
+
+            if (this.appState !== 'PLAYING' || this.isPaused) return;
+
+            const b = this.playerBoard;
+            if (!b) return;
+
+            switch (e.code) {
+                case 'ArrowLeft':
+                case 'KeyA':
+                    if (!this.keys.left) {
+                        b.movePair(-1);
+                        this.keyRepeatTimer.left = 12;
+                    }
+                    this.keys.left = true;
+                    break;
+                case 'ArrowRight':
+                case 'KeyD':
+                    if (!this.keys.right) {
+                        b.movePair(1);
+                        this.keyRepeatTimer.right = 12;
+                    }
+                    this.keys.right = true;
+                    break;
+                case 'ArrowDown':
+                case 'KeyS':
+                    b.fastDrop = true;
+                    break;
+                case 'ArrowUp':
+                case 'KeyW':
+                case 'KeyX':
+                    b.rotatePair(1);
+                    break;
+                case 'KeyZ':
+                case 'ControlLeft':
+                    b.rotatePair(-1);
+                    break;
+                case 'Space':
+                    b.hardDrop();
+                    break;
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (!this.playerBoard) return;
+            switch (e.code) {
+                case 'ArrowLeft':
+                case 'KeyA':
+                    this.keys.left = false;
+                    this.keyRepeatTimer.left = 0;
+                    break;
+                case 'ArrowRight':
+                case 'KeyD':
+                    this.keys.right = false;
+                    this.keyRepeatTimer.right = 0;
+                    break;
+                case 'ArrowDown':
+                case 'KeyS':
+                    this.playerBoard.fastDrop = false;
+                    break;
+            }
+        });
+    }
+
+    startGame(mode, boardSize, difficulty) {
+        this.mode = mode;
+        this.boardSize = boardSize;
+        this.difficulty = difficulty;
+        this.appState = 'PLAYING';
+        this.isPaused = false;
+
+        const cols = (boardSize === 'wide') ? 8 : 6;
+        const rows = (boardSize === 'wide') ? 14 : 12;
+        const cellSize = (boardSize === 'wide') ? 40 : 44;
+
+        // 1Pボード初期化
+        const pCanvas = document.getElementById('game-canvas');
+        const pNext = document.getElementById('next-canvas');
+        this.playerBoard = new PuyoBoard(pCanvas, pNext, { cols, rows, cellSize, isCPU: false });
+
+        // VSモードの場合、CPUボードも初期化
+        if (mode === 'vs') {
+            const cpuCanvas = document.getElementById('cpu-canvas');
+            const cpuNext = document.getElementById('cpu-next-canvas');
+            this.cpuBoard = new PuyoBoard(cpuCanvas, cpuNext, { cols, rows, cellSize, isCPU: true, difficulty });
+
+            this.playerBoard.setOpponent(this.cpuBoard);
+            this.cpuBoard.setOpponent(this.playerBoard);
+        } else {
+            this.cpuBoard = null;
+        }
+
+        // BGM再生
+        if (window.midiPlayer) {
+            window.midiPlayer.stop();
+            window.midiPlayer.play();
+        }
+
+        // UI切り替え
+        document.getElementById('title-screen').style.display = 'none';
+        document.getElementById('game-screen').style.display = 'flex';
+        document.getElementById('pause-modal').style.display = 'none';
+
+        const cpuArea = document.getElementById('cpu-board-area');
+        if (cpuArea) cpuArea.style.display = (mode === 'vs') ? 'flex' : 'none';
+
+        const vsCenter = document.getElementById('vs-center-area');
+        if (vsCenter) vsCenter.style.display = (mode === 'vs') ? 'flex' : 'none';
+
+        if (!this.animFrameId) {
+            this.loop();
+        }
+    }
+
+    togglePause() {
+        if (this.appState !== 'PLAYING' && this.appState !== 'PAUSED') return;
+
+        this.isPaused = !this.isPaused;
+        this.appState = this.isPaused ? 'PAUSED' : 'PLAYING';
+
+        const modal = document.getElementById('pause-modal');
+        if (modal) modal.style.display = this.isPaused ? 'flex' : 'none';
+
+        if (window.midiPlayer) {
+            if (this.isPaused) window.midiPlayer.pause();
+            else window.midiPlayer.play();
+        }
+    }
+
+    returnToTitle() {
+        this.appState = 'TITLE';
+        this.isPaused = false;
+        if (window.midiPlayer) window.midiPlayer.stop();
+
+        document.getElementById('title-screen').style.display = 'flex';
+        document.getElementById('game-screen').style.display = 'none';
+        document.getElementById('pause-modal').style.display = 'none';
+    }
+
+    loop() {
+        if (this.appState === 'PLAYING' && !this.isPaused) {
+            // キーリピート
+            if (this.playerBoard && this.playerBoard.state === 'CONTROLLING') {
+                if (this.keys.left) {
+                    this.keyRepeatTimer.left--;
+                    if (this.keyRepeatTimer.left <= 0) {
+                        this.playerBoard.movePair(-1);
+                        this.keyRepeatTimer.left = 4;
+                    }
+                }
+                if (this.keys.right) {
+                    this.keyRepeatTimer.right--;
+                    if (this.keyRepeatTimer.right <= 0) {
+                        this.playerBoard.movePair(1);
+                        this.keyRepeatTimer.right = 4;
+                    }
+                }
+            }
+
+            // ボード更新
+            if (this.playerBoard) this.playerBoard.update();
+            if (this.cpuBoard) this.cpuBoard.update();
+
+            // パーティクル更新
+            if (window.particleManager) window.particleManager.update();
+
+            this.updateStatsUI();
+        }
+
+        // 描画
+        if (this.appState === 'PLAYING' || this.appState === 'PAUSED') {
+            if (this.playerBoard) this.playerBoard.draw();
+            if (this.cpuBoard) this.cpuBoard.draw();
+
+            // 1Pボード上にパーティクル描画
+            if (this.playerBoard && window.particleManager) {
+                window.particleManager.draw(this.playerBoard.ctx);
+            }
+        }
+
+        this.animFrameId = requestAnimationFrame(() => this.loop());
+    }
+
+    updateStatsUI() {
+        if (!this.playerBoard) return;
+        const sEl = document.getElementById('score-val');
+        const cEl = document.getElementById('chain-val');
+        const pEl = document.getElementById('popped-val');
+        const ojama1El = document.getElementById('p1-ojama-val');
+        const ojama2El = document.getElementById('p2-ojama-val');
+
+        if (sEl) sEl.textContent = this.playerBoard.score.toLocaleString();
+        if (cEl) cEl.textContent = this.playerBoard.maxChain;
+        if (pEl) pEl.textContent = this.playerBoard.totalPopped;
+
+        if (ojama1El) ojama1El.textContent = this.playerBoard.pendingOjama;
+        if (ojama2El && this.cpuBoard) ojama2El.textContent = this.cpuBoard.pendingOjama;
     }
 }
 
-window.PuyoGame = PuyoGame;
+window.GameManager = GameManager;

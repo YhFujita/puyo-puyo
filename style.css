@@ -1,10 +1,10 @@
 @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@700;900&family=Outfit:wght@600;800;900&display=swap');
 
 :root {
-    --bg-dark: #0b0f19;
-    --card-bg: rgba(26, 33, 56, 0.7);
-    --card-border: rgba(255, 255, 255, 0.12);
-    --board-bg: #070913;
+    --bg-dark: #070a14;
+    --card-bg: rgba(22, 28, 48, 0.75);
+    --card-border: rgba(255, 255, 255, 0.14);
+    --board-bg: #05070e;
     --text-primary: #f8fafc;
     --text-muted: #94a3b8;
     --accent-red: #ff3b5c;
@@ -23,7 +23,7 @@
 }
 
 body {
-    background: radial-gradient(circle at 50% 20%, #171d33 0%, var(--bg-dark) 100%);
+    background: radial-gradient(circle at 50% 15%, #182038 0%, var(--bg-dark) 100%);
     font-family: 'Outfit', 'M PLUS Rounded 1c', sans-serif;
     color: var(--text-primary);
     min-height: 100vh;
@@ -32,198 +32,381 @@ body {
     align-items: center;
     justify-content: center;
     overflow-x: hidden;
-    padding: 16px;
+    padding: 12px;
 }
 
-/* メインコンテナ */
+/* トップコンテナ */
 .app-container {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 16px;
-    max-width: 900px;
     width: 100%;
-}
-
-/* タイトルヘッダー */
-header {
-    text-align: center;
+    max-width: 1200px;
     position: relative;
 }
 
-.title-glow {
-    font-size: 2.4rem;
+/* ===================================================
+   タイトル画面
+=================================================== */
+#title-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    width: 100%;
+    max-width: 580px;
+    padding: 36px 24px;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    backdrop-filter: blur(16px);
+    border-radius: 24px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6), 0 0 50px rgba(14, 165, 233, 0.2);
+    text-align: center;
+}
+
+.logo-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.title-logo {
+    font-size: 3.4rem;
     font-weight: 900;
-    letter-spacing: 2px;
+    letter-spacing: 3px;
     background: linear-gradient(135deg, #ff3b5c, #f59e0b, #10b981, #0ea5e9, #a855f7);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    filter: drop-shadow(0 0 16px rgba(245, 158, 11, 0.4));
-    display: inline-block;
+    filter: drop-shadow(0 0 20px rgba(245, 158, 11, 0.5));
+    animation: titleFloat 3s ease-in-out infinite;
 }
 
-.subtitle {
+@keyframes titleFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+}
+
+.subtitle-badge {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    padding: 4px 16px;
     font-size: 0.85rem;
-    color: var(--text-muted);
-    font-weight: 700;
-    letter-spacing: 1px;
-    margin-top: 2px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    color: #38bdf8;
+    margin-top: 4px;
 }
 
-/* ゲームエリアレイアウト */
-.game-layout {
+.option-group {
     display: flex;
-    flex-direction: row;
-    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    text-align: left;
+}
+
+.option-label {
+    font-size: 0.85rem;
+    font-weight: 800;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+}
+
+.select-btn-group {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+}
+
+.select-btn {
+    flex: 1;
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: var(--text-muted);
+    font-family: inherit;
+    font-weight: 800;
+    font-size: 0.9rem;
+    padding: 10px 12px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.select-btn:hover {
+    border-color: rgba(255, 255, 255, 0.4);
+    color: white;
+}
+
+.select-btn.active {
+    background: linear-gradient(135deg, #0284c7, #0369a1);
+    border-color: #38bdf8;
+    color: white;
+    box-shadow: 0 4px 14px rgba(14, 165, 233, 0.4);
+}
+
+.start-btn {
+    width: 100%;
+    background: linear-gradient(135deg, #ff3b5c, #d91d45);
+    border: 1px solid rgba(255, 59, 92, 0.5);
+    color: white;
+    font-family: inherit;
+    font-size: 1.3rem;
+    font-weight: 900;
+    letter-spacing: 2px;
+    padding: 16px;
+    border-radius: 16px;
+    cursor: pointer;
+    box-shadow: 0 8px 24px rgba(255, 59, 92, 0.5);
+    transition: all 0.2s;
+    margin-top: 8px;
+}
+
+.start-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 30px rgba(255, 59, 92, 0.7);
+}
+
+.start-btn:active {
+    transform: translateY(1px);
+}
+
+/* ===================================================
+   ゲーム画面
+=================================================== */
+#game-screen {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    width: 100%;
+}
+
+.game-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    max-width: 980px;
+    padding: 0 8px;
+}
+
+.header-left, .header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.icon-btn {
+    background: rgba(30, 41, 59, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: white;
+    font-family: inherit;
+    font-weight: 800;
+    font-size: 0.85rem;
+    padding: 8px 14px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.icon-btn:hover {
+    background: rgba(51, 65, 85, 0.8);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* メイン対戦レイアウト */
+.battle-layout {
+    display: flex;
     justify-content: center;
+    align-items: flex-start;
     gap: 20px;
     width: 100%;
 }
 
-/* 左側サイドパネル (操作ガイド & 設定) */
-.side-panel {
+.board-wrapper {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    width: 180px;
-}
-
-.panel-card {
-    background: var(--card-bg);
-    border: 1px solid var(--card-border);
-    backdrop-filter: blur(12px);
-    border-radius: 14px;
-    padding: 14px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-}
-
-.panel-title {
-    font-size: 0.85rem;
-    color: var(--text-muted);
-    font-weight: 800;
-    letter-spacing: 1px;
-    margin-bottom: 8px;
-    display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
 }
 
-.stat-value {
-    font-size: 1.6rem;
+.player-tag {
+    font-size: 1.1rem;
     font-weight: 900;
-    color: #38bdf8;
-    text-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
-}
-
-.key-guide {
+    letter-spacing: 2px;
     display: flex;
-    flex-direction: column;
-    gap: 6px;
-    font-size: 0.75rem;
-}
-
-.key-row {
-    display: flex;
-    justify-content: space-between;
     align-items: center;
+    gap: 8px;
 }
 
-.key-badge {
-    background: rgba(255, 255, 255, 0.15);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 4px;
-    padding: 2px 6px;
-    font-size: 0.7rem;
-    font-weight: 700;
-    color: #f1f5f9;
-}
+.tag-1p { color: #38bdf8; text-shadow: 0 0 10px rgba(56, 189, 248, 0.5); }
+.tag-2p { color: #f43f5e; text-shadow: 0 0 10px rgba(244, 63, 94, 0.5); }
 
-/* 中央ボードエリア */
 .board-container {
     position: relative;
     background: var(--board-bg);
     border-radius: 16px;
     padding: 6px;
-    box-shadow: 0 0 35px rgba(14, 165, 233, 0.25), 0 12px 32px rgba(0, 0, 0, 0.8);
+    box-shadow: 0 0 35px rgba(14, 165, 233, 0.2), 0 12px 32px rgba(0, 0, 0, 0.8);
     border: 2px solid rgba(14, 165, 233, 0.35);
 }
 
-#game-canvas {
+.cpu-board-container {
+    border-color: rgba(244, 63, 94, 0.35);
+    box-shadow: 0 0 35px rgba(244, 63, 94, 0.2), 0 12px 32px rgba(0, 0, 0, 0.8);
+}
+
+canvas {
     display: block;
     border-radius: 12px;
-    background: #090d1a;
+    background: #060914;
 }
 
-/* 右側サイドパネル (NEXT & スコア) */
-.right-panel {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    width: 140px;
-}
-
-.next-box {
+/* 中央VS・おじゃまエリア */
+.vs-center-area {
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 10px;
+    gap: 16px;
+    width: 120px;
+    padding-top: 40px;
 }
 
-#next-canvas {
-    display: block;
-    border-radius: 8px;
-    background: rgba(0, 0, 0, 0.35);
+.vs-logo {
+    font-size: 2.2rem;
+    font-weight: 900;
+    color: #f59e0b;
+    text-shadow: 0 0 16px rgba(245, 158, 11, 0.6);
+    letter-spacing: 2px;
 }
 
-/* ボタン類 */
-.btn-row {
-    display: flex;
-    gap: 8px;
-}
-
-.game-btn {
-    flex: 1;
-    background: linear-gradient(135deg, #1e293b, #0f172a);
+.ojama-meter {
+    background: rgba(30, 41, 59, 0.8);
     border: 1px solid rgba(255, 255, 255, 0.15);
-    color: var(--text-primary);
-    font-family: inherit;
-    font-weight: 700;
-    font-size: 0.85rem;
-    padding: 8px 12px;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: all 0.2s ease;
+    border-radius: 12px;
+    padding: 10px 8px;
+    width: 100%;
+    text-align: center;
+}
+
+.ojama-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 800;
+}
+
+.ojama-count {
+    font-size: 1.4rem;
+    font-weight: 900;
+    color: #f1f5f9;
+}
+
+/* NEXTボックス */
+.next-wrapper {
     display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 14px;
+    padding: 8px;
+    backdrop-filter: blur(10px);
+}
+
+/* ステータスカード */
+.stat-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 8px 14px;
+    text-align: center;
+    backdrop-filter: blur(10px);
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 800;
+}
+
+.stat-value {
+    font-size: 1.4rem;
+    font-weight: 900;
+    color: #38bdf8;
+}
+
+/* ===================================================
+   ポーズモーダル (Esc連動)
+=================================================== */
+#pause-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(7, 10, 20, 0.8);
+    backdrop-filter: blur(12px);
+    z-index: 1000;
     align-items: center;
     justify-content: center;
-    gap: 6px;
 }
 
-.game-btn:hover {
-    background: linear-gradient(135deg, #334155, #1e293b);
-    border-color: rgba(255, 255, 255, 0.3);
-    transform: translateY(-1px);
+.pause-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 20px;
+    padding: 32px;
+    width: 320px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    text-align: center;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7);
 }
 
-.game-btn:active {
-    transform: translateY(1px);
+.pause-title {
+    font-size: 2rem;
+    font-weight: 900;
+    color: #f59e0b;
+    letter-spacing: 2px;
 }
 
-.game-btn.primary {
-    background: linear-gradient(135deg, #ff3b5c, #b91c3d);
-    border-color: rgba(255, 59, 92, 0.5);
-    box-shadow: 0 4px 14px rgba(255, 59, 92, 0.4);
+.modal-btn {
+    background: rgba(30, 41, 59, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    font-family: inherit;
+    font-weight: 800;
+    font-size: 1rem;
+    padding: 12px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
 }
 
-.game-btn.primary:hover {
-    background: linear-gradient(135deg, #ff5c77, #d91d45);
+.modal-btn:hover {
+    background: rgba(51, 65, 85, 0.9);
+    border-color: rgba(255, 255, 255, 0.4);
 }
 
-/* モバイル用オンスクリーンコントローラー */
+.modal-btn.primary {
+    background: linear-gradient(135deg, #0284c7, #0369a1);
+    border-color: #38bdf8;
+}
+
+/* ===================================================
+   タッチコントローラー
+=================================================== */
 .touch-controls {
     display: none;
     width: 100%;
-    max-width: 480px;
+    max-width: 500px;
     margin-top: 8px;
     touch-action: manipulation;
 }
@@ -233,12 +416,12 @@ header {
     justify-content: space-between;
     align-items: center;
     width: 100%;
-    padding: 0 10px;
+    padding: 0 12px;
 }
 
 .dpad {
     display: grid;
-    grid-template-columns: repeat(3, 56px);
+    grid-template-columns: repeat(3, 58px);
     grid-template-rows: repeat(3, 52px);
     gap: 4px;
 }
@@ -249,50 +432,45 @@ header {
 }
 
 .touch-btn {
-    background: rgba(30, 41, 59, 0.8);
+    background: rgba(30, 41, 59, 0.85);
     border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 12px;
     color: white;
     font-weight: 900;
-    font-size: 1.1rem;
+    font-size: 1.2rem;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    user-select: none;
-    transition: background 0.1s;
 }
 
 .touch-btn:active {
-    background: rgba(14, 165, 233, 0.6);
+    background: rgba(14, 165, 233, 0.7);
     transform: scale(0.96);
 }
 
 .touch-btn.rot {
-    width: 60px;
-    height: 60px;
+    width: 62px;
+    height: 62px;
     border-radius: 50%;
-    background: rgba(245, 158, 11, 0.35);
-    border-color: rgba(245, 158, 11, 0.5);
+    background: rgba(245, 158, 11, 0.4);
+    border-color: rgba(245, 158, 11, 0.6);
 }
 
 .touch-btn.rot:active {
-    background: rgba(245, 158, 11, 0.7);
+    background: rgba(245, 158, 11, 0.8);
 }
 
-@media (max-width: 768px) {
-    .game-layout {
+@media (max-width: 900px) {
+    .battle-layout {
         flex-direction: column;
         align-items: center;
     }
-    .side-panel {
-        display: none;
-    }
-    .right-panel {
+    .vs-center-area {
         flex-direction: row;
         width: 100%;
-        max-width: 320px;
-        justify-content: space-between;
+        justify-content: center;
+        padding-top: 0;
     }
     .touch-controls {
         display: block;

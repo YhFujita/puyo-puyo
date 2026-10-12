@@ -3,130 +3,262 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ぷよぷよ完全再現 - Procedural Slime Puyo</title>
+    <title>ぷよぷよ完全再現 - Procedural Slime Simulator</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="app-container">
-        <!-- ヘッダー -->
-        <header>
-            <h1 class="title-glow">PUYO PUYO</h1>
-            <div class="subtitle">PROCEDURAL SLIME SIMULATOR</div>
-        </header>
+        <!-- ==============================================
+             タイトル画面
+        =============================================== -->
+        <div id="title-screen">
+            <div class="logo-container">
+                <h1 class="title-logo">PUYO PUYO</h1>
+                <div class="subtitle-badge">PROCEDURAL SLIME CLASH</div>
+            </div>
 
-        <!-- メインゲームレイアウト -->
-        <div class="game-layout">
-            <!-- 左パネル: ステータス＆操作ガイド -->
-            <div class="side-panel">
-                <div class="panel-card">
-                    <div class="panel-title">SCORE</div>
-                    <div id="score-val" class="stat-value">0</div>
+            <!-- モード選択 -->
+            <div class="option-group">
+                <div class="option-label">GAME MODE</div>
+                <div class="select-btn-group" id="mode-select">
+                    <button class="select-btn active" data-mode="solo">👤 1P とことん</button>
+                    <button class="select-btn" data-mode="vs">⚔️ VS CPU 対戦</button>
                 </div>
+            </div>
 
-                <div class="panel-card">
-                    <div class="panel-title">MAX CHAIN</div>
-                    <div id="chain-val" class="stat-value" style="color: #f59e0b;">0</div>
+            <!-- フィールドサイズ選択 (広大画面・たくさん置ける) -->
+            <div class="option-group">
+                <div class="option-label">FIELD SIZE</div>
+                <div class="select-btn-group" id="size-select">
+                    <button class="select-btn active" data-size="classic">クラシック (6×12)</button>
+                    <button class="select-btn" data-size="wide">✨ ワイド大画面 (8×14)</button>
                 </div>
+            </div>
 
-                <div class="panel-card">
-                    <div class="panel-title">POPPED</div>
-                    <div id="popped-val" class="stat-value" style="color: #10b981;">0</div>
+            <!-- CPU難易度 (VSモード時) -->
+            <div class="option-group" id="diff-group" style="display: none;">
+                <div class="option-label">CPU DIFFICULTY</div>
+                <div class="select-btn-group" id="diff-select">
+                    <button class="select-btn" data-diff="easy">かんたん</button>
+                    <button class="select-btn active" data-diff="normal">ふつう</button>
+                    <button class="select-btn" data-diff="hard">ゲキムズ</button>
                 </div>
+            </div>
 
-                <div class="panel-card">
-                    <div class="panel-title">CONTROLS</div>
-                    <div class="key-guide">
-                        <div class="key-row">
-                            <span>移動</span>
-                            <span class="key-badge">← → / A D</span>
+            <!-- サウンド設定 -->
+            <div class="option-group">
+                <div class="option-label">AUDIO</div>
+                <div class="select-btn-group">
+                    <button id="title-btn-bgm" class="select-btn active">🎵 BGM: ON (MIDI)</button>
+                    <button id="title-btn-se" class="select-btn active">🔊 効果音: ON</button>
+                </div>
+            </div>
+
+            <button id="btn-start-game" class="start-btn">GAME START</button>
+        </div>
+
+        <!-- ==============================================
+             ゲーム画面
+        =============================================== -->
+        <div id="game-screen">
+            <!-- ヘッダー (ナビゲーション・ポーズ・設定) -->
+            <div class="game-header">
+                <div class="header-left">
+                    <button id="btn-pause-header" class="icon-btn">⏸ ポーズ (Esc)</button>
+                    <button id="btn-title-header" class="icon-btn">🏠 タイトル</button>
+                </div>
+                <div class="header-right">
+                    <button id="game-btn-bgm" class="icon-btn">🎵 BGM: ON</button>
+                    <button id="game-btn-se" class="icon-btn">🔊 SE: ON</button>
+                </div>
+            </div>
+
+            <!-- メインバトルエリア -->
+            <div class="battle-layout">
+                <!-- 1P ボードエリア -->
+                <div class="board-wrapper">
+                    <div class="player-tag tag-1p">
+                        <span>YOU (1P)</span>
+                    </div>
+                    <div style="display: flex; gap: 12px; align-items: flex-start;">
+                        <div class="board-container">
+                            <canvas id="game-canvas"></canvas>
                         </div>
-                        <div class="key-row">
-                            <span>高速落下</span>
-                            <span class="key-badge">↓ / S</span>
-                        </div>
-                        <div class="key-row">
-                            <span>即時落下</span>
-                            <span class="key-badge">Space</span>
-                        </div>
-                        <div class="key-row">
-                            <span>右回転</span>
-                            <span class="key-badge">↑ / X</span>
-                        </div>
-                        <div class="key-row">
-                            <span>左回転</span>
-                            <span class="key-badge">Z / Ctrl</span>
+                        <div style="display: flex; flex-direction: column; gap: 10px;">
+                            <div class="next-wrapper">
+                                <canvas id="next-canvas"></canvas>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">SCORE</div>
+                                <div id="score-val" class="stat-value">0</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">MAX CHAIN</div>
+                                <div id="chain-val" class="stat-value" style="color: #f59e0b;">0</div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="btn-row">
-                    <button id="btn-restart" class="game-btn primary">🔄 リセット</button>
-                    <button id="btn-sound" class="game-btn">🔊 音: ON</button>
+                <!-- 中央 VS & おじゃまぷよ予告メーター (VS対戦時) -->
+                <div id="vs-center-area" class="vs-center-area" style="display: none;">
+                    <div class="vs-logo">VS</div>
+                    <div class="ojama-meter">
+                        <div class="ojama-label">1P 予告</div>
+                        <div id="p1-ojama-val" class="ojama-count" style="color: #f43f5e;">0</div>
+                    </div>
+                    <div class="ojama-meter">
+                        <div class="ojama-label">CPU 予告</div>
+                        <div id="p2-ojama-val" class="ojama-count" style="color: #38bdf8;">0</div>
+                    </div>
+                </div>
+
+                <!-- 2P CPU ボードエリア (VS対戦時) -->
+                <div id="cpu-board-area" class="board-wrapper" style="display: none;">
+                    <div class="player-tag tag-2p">
+                        <span>CPU (2P)</span>
+                    </div>
+                    <div style="display: flex; gap: 12px; align-items: flex-start;">
+                        <div class="board-container cpu-board-container">
+                            <canvas id="cpu-canvas"></canvas>
+                        </div>
+                        <div class="next-wrapper">
+                            <canvas id="cpu-next-canvas"></canvas>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <!-- 中央: ゲームボード -->
-            <div class="board-container">
-                <canvas id="game-canvas"></canvas>
-            </div>
-
-            <!-- 右パネル: NEXT & ネクネク表示 -->
-            <div class="right-panel">
-                <div class="panel-card next-box">
-                    <canvas id="next-canvas"></canvas>
+            <!-- モバイル用オンスクリーンタッチコントローラー -->
+            <div class="touch-controls">
+                <div class="touch-grid">
+                    <div class="dpad">
+                        <div></div>
+                        <button class="touch-btn" id="btn-hard-drop">⚡</button>
+                        <div></div>
+                        <button class="touch-btn" id="btn-move-left">◀</button>
+                        <button class="touch-btn" id="btn-soft-drop">▼</button>
+                        <button class="touch-btn" id="btn-move-right">▶</button>
+                        <div></div>
+                        <div></div>
+                        <div></div>
+                    </div>
+                    <div class="action-buttons">
+                        <button class="touch-btn rot" id="btn-rot-left">↶ Z</button>
+                        <button class="touch-btn rot" id="btn-rot-right">↷ X</button>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- モバイル・タッチ用コントローラー -->
-        <div class="touch-controls">
-            <div class="touch-grid">
-                <div class="dpad">
-                    <div></div>
-                    <button class="touch-btn" id="btn-hard-drop">⚡</button>
-                    <div></div>
-                    <button class="touch-btn" id="btn-move-left">◀</button>
-                    <button class="touch-btn" id="btn-soft-drop">▼</button>
-                    <button class="touch-btn" id="btn-move-right">▶</button>
-                    <div></div>
-                    <div></div>
-                    <div></div>
-                </div>
-                <div class="action-buttons">
-                    <button class="touch-btn rot" id="btn-rot-left">↶ Z</button>
-                    <button class="touch-btn rot" id="btn-rot-right">↷ X</button>
-                </div>
+        <!-- ==============================================
+             ポーズモーダル (Esc連動)
+        =============================================== -->
+        <div id="pause-modal">
+            <div class="pause-card">
+                <div class="pause-title">PAUSED</div>
+                <button id="btn-resume" class="modal-btn primary">▶ ゲーム再開 (Esc)</button>
+                <button id="btn-retry" class="modal-btn">🔄 最初からやり直す</button>
+                <button id="btn-return-title" class="modal-btn">🏠 タイトルに戻る</button>
             </div>
         </div>
     </div>
 
     <!-- スクリプト群 -->
     <script src="audio.js"></script>
+    <script src="midi_player.js"></script>
     <script src="particles.js"></script>
     <script src="puyo.js"></script>
+    <script src="ai.js"></script>
     <script src="game.js"></script>
     <script>
         window.addEventListener('DOMContentLoaded', () => {
-            const canvas = document.getElementById('game-canvas');
-            const nextCanvas = document.getElementById('next-canvas');
-            const game = new PuyoGame(canvas, nextCanvas);
-            window.game = game;
+            const gameManager = new GameManager();
+            window.gameManager = gameManager;
 
-            // リスタートボタン
-            document.getElementById('btn-restart').addEventListener('click', () => {
+            let selectedMode = 'solo';
+            let selectedSize = 'classic';
+            let selectedDiff = 'normal';
+
+            // モード切り替えボタン
+            const modeBtns = document.querySelectorAll('#mode-select .select-btn');
+            const diffGroup = document.getElementById('diff-group');
+            modeBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    modeBtns.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    selectedMode = btn.dataset.mode;
+                    diffGroup.style.display = (selectedMode === 'vs') ? 'flex' : 'none';
+                });
+            });
+
+            // サイズ切り替えボタン
+            const sizeBtns = document.querySelectorAll('#size-select .select-btn');
+            sizeBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    sizeBtns.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    selectedSize = btn.dataset.size;
+                });
+            });
+
+            // 難易度切り替えボタン
+            const diffBtns = document.querySelectorAll('#diff-select .select-btn');
+            diffBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    diffBtns.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    selectedDiff = btn.dataset.diff;
+                });
+            });
+
+            // スタートボタン
+            document.getElementById('btn-start-game').addEventListener('click', () => {
                 if (window.soundEngine) window.soundEngine.resume();
-                game.reset();
+                if (window.midiPlayer) window.midiPlayer.ensureAudioContext();
+                gameManager.startGame(selectedMode, selectedSize, selectedDiff);
             });
 
-            // サウンド切り替え
-            const soundBtn = document.getElementById('btn-sound');
-            soundBtn.addEventListener('click', () => {
-                if (window.soundEngine) {
-                    window.soundEngine.resume();
-                    const muted = window.soundEngine.toggleMute();
-                    soundBtn.textContent = muted ? '🔇 音: OFF' : '🔊 音: ON';
-                }
+            // ポーズ・再開・タイトルボタン
+            document.getElementById('btn-pause-header').addEventListener('click', () => gameManager.togglePause());
+            document.getElementById('btn-resume').addEventListener('click', () => gameManager.togglePause());
+            document.getElementById('btn-retry').addEventListener('click', () => {
+                gameManager.startGame(selectedMode, selectedSize, selectedDiff);
             });
+            document.getElementById('btn-return-title').addEventListener('click', () => gameManager.returnToTitle());
+            document.getElementById('btn-title-header').addEventListener('click', () => gameManager.returnToTitle());
+
+            // BGM / SE 切り替え
+            const syncAudioButtons = () => {
+                const bgmActive = window.midiPlayer && !window.midiPlayer.isMuted;
+                const seActive = window.soundEngine && !window.soundEngine.isMuted;
+
+                const bgmText = bgmActive ? '🎵 BGM: ON' : '🔇 BGM: OFF';
+                const seText = seActive ? '🔊 SE: ON' : '🔇 SE: OFF';
+
+                document.getElementById('title-btn-bgm').textContent = bgmText;
+                document.getElementById('game-btn-bgm').textContent = bgmText;
+                document.getElementById('title-btn-se').textContent = seText;
+                document.getElementById('game-btn-se').textContent = seText;
+            };
+
+            const toggleBgm = () => {
+                if (window.midiPlayer) {
+                    window.midiPlayer.toggleMute();
+                    syncAudioButtons();
+                }
+            };
+            const toggleSe = () => {
+                if (window.soundEngine) {
+                    window.soundEngine.toggleMute();
+                    syncAudioButtons();
+                }
+            };
+
+            document.getElementById('title-btn-bgm').addEventListener('click', toggleBgm);
+            document.getElementById('game-btn-bgm').addEventListener('click', toggleBgm);
+            document.getElementById('title-btn-se').addEventListener('click', toggleSe);
+            document.getElementById('game-btn-se').addEventListener('click', toggleSe);
 
             // タッチコントローラーのバインド
             const bindTouch = (id, onDown, onUp) => {
@@ -135,6 +267,7 @@
                 const down = (e) => {
                     e.preventDefault();
                     if (window.soundEngine) window.soundEngine.resume();
+                    if (window.midiPlayer) window.midiPlayer.ensureAudioContext();
                     onDown();
                 };
                 const up = (e) => {
@@ -147,22 +280,20 @@
                 el.addEventListener('mouseup', up);
             };
 
-            bindTouch('btn-move-left', () => game.movePair(-1));
-            bindTouch('btn-move-right', () => game.movePair(1));
+            bindTouch('btn-move-left', () => { if (gameManager.playerBoard) gameManager.playerBoard.movePair(-1); });
+            bindTouch('btn-move-right', () => { if (gameManager.playerBoard) gameManager.playerBoard.movePair(1); });
             bindTouch('btn-soft-drop', 
-                () => { game.fastDrop = true; }, 
-                () => { game.fastDrop = false; }
+                () => { if (gameManager.playerBoard) gameManager.playerBoard.fastDrop = true; }, 
+                () => { if (gameManager.playerBoard) gameManager.playerBoard.fastDrop = false; }
             );
-            bindTouch('btn-hard-drop', () => game.hardDrop());
-            bindTouch('btn-rot-right', () => game.rotatePair(1));
-            bindTouch('btn-rot-left', () => game.rotatePair(-1));
+            bindTouch('btn-hard-drop', () => { if (gameManager.playerBoard) gameManager.playerBoard.hardDrop(); });
+            bindTouch('btn-rot-right', () => { if (gameManager.playerBoard) gameManager.playerBoard.rotatePair(1); });
+            bindTouch('btn-rot-left', () => { if (gameManager.playerBoard) gameManager.playerBoard.rotatePair(-1); });
 
-            // 初回クリック時にWeb Audio有効化
             window.addEventListener('pointerdown', () => {
                 if (window.soundEngine) window.soundEngine.resume();
+                if (window.midiPlayer) window.midiPlayer.ensureAudioContext();
             }, { once: true });
-
-            game.start();
         });
     </script>
 </body>

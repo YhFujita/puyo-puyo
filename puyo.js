@@ -43,10 +43,19 @@ const PUYO_COLORS = {
         dark: '#7e22ce',
         highlight: '#ffffff',
         glow: 'rgba(168, 85, 247, 0.4)'
+    },
+    OJAMA: {
+        name: 'ojama',
+        main: '#cbd5e1',
+        light: '#f8fafc',
+        dark: '#64748b',
+        highlight: '#ffffff',
+        glow: 'rgba(255, 255, 255, 0.5)'
     }
 };
 
-const COLOR_KEYS = Object.keys(PUYO_COLORS);
+// 通常ペア出現用カラー（5色）
+const COLOR_KEYS = ['RED', 'GREEN', 'BLUE', 'YELLOW', 'PURPLE'];
 
 class Puyo {
     constructor(colorKey) {
@@ -457,6 +466,13 @@ class Puyo {
 
         const currentEyeRadiusY = eyeRadiusY * (1.0 - this.blinkProgress * 0.95);
 
+        // おじゃまぷよ専用の怯え目
+        if (this.colorKey === 'OJAMA') {
+            this.drawOjamaEye(ctx, -eyeOffsetX, eyeOffsetY, eyeRadiusX, currentEyeRadiusY);
+            this.drawOjamaEye(ctx, eyeOffsetX, eyeOffsetY, eyeRadiusX, currentEyeRadiusY);
+            return;
+        }
+
         // 表情による目の描画
         if (this.expression === 'happy') {
             this.drawHappyEye(ctx, -eyeOffsetX, eyeOffsetY, eyeRadiusX);
@@ -556,6 +572,47 @@ class Puyo {
         ctx.fillStyle = '#0f172a';
         ctx.beginPath();
         ctx.arc(ex + shiftX, ey + shiftY, rx * 0.35, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+    }
+
+    /**
+     * おじゃまぷよ専用のうるうる困り目＆困り眉
+     */
+    drawOjamaEye(ctx, ex, ey, rx, ry) {
+        ctx.save();
+
+        // 困り眉毛
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        const browDir = ex < 0 ? -1 : 1;
+        ctx.moveTo(ex - rx * 0.7 * browDir, ey - ry * 1.1);
+        ctx.lineTo(ex + rx * 0.8 * browDir, ey - ry * 1.4);
+        ctx.stroke();
+
+        // 白目
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.ellipse(ex, ey, rx, ry, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#64748b';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        // うるうる瞳
+        const pupilRadius = rx * 0.65;
+        ctx.fillStyle = '#1e293b';
+        ctx.beginPath();
+        ctx.arc(ex + this.lookX * rx * 0.25, ey + this.lookY * ry * 0.25, pupilRadius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 2つのうるうるハイライト
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(ex - pupilRadius * 0.3, ey - pupilRadius * 0.3, pupilRadius * 0.4, 0, Math.PI * 2);
+        ctx.arc(ex + pupilRadius * 0.3, ey + pupilRadius * 0.3, pupilRadius * 0.22, 0, Math.PI * 2);
         ctx.fill();
 
         ctx.restore();
