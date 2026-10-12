@@ -69,7 +69,11 @@ class PuyoBoard {
         this.opponent = null;  // 対戦相手のPuyoBoard
 
         // 操作設定
-        this.dropInterval = 45;
+        if (this.isCPU) {
+            this.dropInterval = (this.difficulty === 'easy') ? 52 : ((this.difficulty === 'normal') ? 42 : 30);
+        } else {
+            this.dropInterval = 45;
+        }
         this.dropTimer = 0;
         this.fastDrop = false;
 
@@ -313,7 +317,16 @@ class PuyoBoard {
             p.child.puyo.setLookDirection(0, 0.95);
         }
 
-        const currentDropSpeed = this.fastDrop ? 2 : this.dropInterval;
+        let currentDropSpeed;
+        if (this.fastDrop) {
+            if (this.isCPU) {
+                currentDropSpeed = (this.difficulty === 'hard') ? 3 : 8;
+            } else {
+                currentDropSpeed = 3;
+            }
+        } else {
+            currentDropSpeed = this.dropInterval;
+        }
         this.dropTimer++;
 
         if (this.dropTimer >= currentDropSpeed) {
