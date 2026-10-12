@@ -329,6 +329,11 @@ class PuyoBoard {
         }
         this.dropTimer++;
 
+        // CPUが最上段で目標列へスライド移動している間は自然落下を保留
+        if (this.isCPU && this.ai && p.pivot.y <= 1 && p.pivot.x !== this.ai.targetX) {
+            this.dropTimer = 0;
+        }
+
         if (this.dropTimer >= currentDropSpeed) {
             this.dropTimer = 0;
             if (this.canPairFall()) {
