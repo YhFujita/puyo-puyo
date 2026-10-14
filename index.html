@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>ぷよぷよ完全再現 - Procedural Slime Simulator</title>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -80,11 +80,11 @@
                     <div class="player-tag tag-1p">
                         <span>YOU (1P)</span>
                     </div>
-                    <div style="display: flex; gap: 12px; align-items: flex-start;">
+                    <div class="player-board-group">
                         <div class="board-container">
                             <canvas id="game-canvas"></canvas>
                         </div>
-                        <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <div class="side-info-column">
                             <div class="next-wrapper">
                                 <canvas id="next-canvas"></canvas>
                             </div>
@@ -118,7 +118,7 @@
                     <div class="player-tag tag-2p">
                         <span>CPU (2P)</span>
                     </div>
-                    <div style="display: flex; gap: 12px; align-items: flex-start;">
+                    <div class="player-board-group">
                         <div class="board-container cpu-board-container">
                             <canvas id="cpu-canvas"></canvas>
                         </div>
@@ -132,20 +132,21 @@
             <!-- モバイル用オンスクリーンタッチコントローラー -->
             <div class="touch-controls">
                 <div class="touch-grid">
-                    <div class="dpad">
+                    <!-- 左手十字キー (左右移動・急降下・高速落下) -->
+                    <div class="dpad-container">
                         <div></div>
-                        <button class="touch-btn" id="btn-hard-drop">⚡</button>
+                        <button class="touch-btn hard-drop" id="btn-hard-drop-left" title="急降下">⚡</button>
                         <div></div>
-                        <button class="touch-btn" id="btn-move-left">◀</button>
-                        <button class="touch-btn" id="btn-soft-drop">▼</button>
-                        <button class="touch-btn" id="btn-move-right">▶</button>
-                        <div></div>
-                        <div></div>
-                        <div></div>
+                        <button class="touch-btn" id="btn-move-left" title="左移動">◀</button>
+                        <button class="touch-btn" id="btn-soft-drop" title="高速落下">▼</button>
+                        <button class="touch-btn" id="btn-move-right" title="右移動">▶</button>
                     </div>
-                    <div class="action-buttons">
-                        <button class="touch-btn rot" id="btn-rot-left">↶ Z</button>
-                        <button class="touch-btn rot" id="btn-rot-right">↷ X</button>
+
+                    <!-- 右手アクションボタン (回転・ハードドロップ) -->
+                    <div class="action-container">
+                        <button class="touch-btn rot" id="btn-rot-left" title="左回転 (Z)">↶</button>
+                        <button class="touch-btn rot" id="btn-rot-right" title="右回転 (X)">↷</button>
+                        <button class="touch-btn hard-drop span-2" id="btn-hard-drop-right" title="瞬時落下 (HARD DROP)">⚡ DROP</button>
                     </div>
                 </div>
             </div>
@@ -260,40 +261,223 @@
             document.getElementById('title-btn-se').addEventListener('click', toggleSe);
             document.getElementById('game-btn-se').addEventListener('click', toggleSe);
 
-            // タッチコントローラーのバインド
-            const bindTouch = (id, onDown, onUp) => {
-                const el = document.getElementById(id);
-                if (!el) return;
-                const down = (e) => {
-                    e.preventDefault();
-                    if (window.soundEngine) window.soundEngine.resume();
-                    if (window.midiPlayer) window.midiPlayer.ensureAudioContext();
-                    onDown();
-                };
-                const up = (e) => {
-                    e.preventDefault();
-                    if (onUp) onUp();
-                };
-                el.addEventListener('touchstart', down, { passive: false });
-                el.addEventListener('touchend', up, { passive: false });
-                el.addEventListener('mousedown', down);
-                el.addEventListener('mouseup', up);
+            // 触覚フィードバック (Haptic Vibration)
+            const triggerHaptic = (ms = 10) => {
+                if (navigator.vibrate) {
+                    try { navigator.vibrate(ms); } catch (e) {}
+                }
             };
 
-            bindTouch('btn-move-left', () => { if (gameManager.playerBoard) gameManager.playerBoard.movePair(-1); });
-            bindTouch('btn-move-right', () => { if (gameManager.playerBoard) gameManager.playerBoard.movePair(1); });
-            bindTouch('btn-soft-drop', 
-                () => { if (gameManager.playerBoard) gameManager.playerBoard.fastDrop = true; }, 
-                () => { if (gameManager.playerBoard) gameManager.playerBoard.fastDrop = false; }
-            );
-            bindTouch('btn-hard-drop', () => { if (gameManager.playerBoard) gameManager.playerBoard.hardDrop(); });
-            bindTouch('btn-rot-right', () => { if (gameManager.playerBoard) gameManager.playerBoard.rotatePair(1); });
-            bindTouch('btn-rot-left', () => { if (gameManager.playerBoard) gameManager.playerBoard.rotatePair(-1); });
-
-            window.addEventListener('pointerdown', () => {
+            const ensureAudio = () => {
                 if (window.soundEngine) window.soundEngine.resume();
                 if (window.midiPlayer) window.midiPlayer.ensureAudioContext();
-            }, { once: true });
+            };
+
+            // オートリピート対応ボタン (左右移動用: DAS)
+            const setupRepeatButton = (id, actionFn, delay = 140, interval = 45, hapticMs = 8) => {
+                const btn = document.getElementById(id);
+                if (!btn) return;
+                let startTimer = null;
+                let repeatTimer = null;
+                let active = false;
+
+                const start = (e) => {
+                    if (e.cancelable) e.preventDefault();
+                    if (active) return;
+                    active = true;
+                    btn.classList.add('active-touch');
+                    triggerHaptic(hapticMs);
+                    ensureAudio();
+                    actionFn();
+
+                    clearTimeout(startTimer);
+                    clearInterval(repeatTimer);
+                    startTimer = setTimeout(() => {
+                        if (!active) return;
+                        repeatTimer = setInterval(() => {
+                            if (!active) {
+                                clearInterval(repeatTimer);
+                                return;
+                            }
+                            actionFn();
+                            triggerHaptic(5);
+                        }, interval);
+                    }, delay);
+                };
+
+                const stop = (e) => {
+                    if (e && e.cancelable) e.preventDefault();
+                    active = false;
+                    btn.classList.remove('active-touch');
+                    clearTimeout(startTimer);
+                    clearInterval(repeatTimer);
+                };
+
+                btn.addEventListener('touchstart', start, { passive: false });
+                btn.addEventListener('touchend', stop, { passive: false });
+                btn.addEventListener('touchcancel', stop, { passive: false });
+                btn.addEventListener('mousedown', start);
+                btn.addEventListener('mouseup', stop);
+                btn.addEventListener('mouseleave', stop);
+            };
+
+            // ホールド対応ボタン (ソフトドロップ用)
+            const setupHoldButton = (id, onDown, onUp, hapticMs = 10) => {
+                const btn = document.getElementById(id);
+                if (!btn) return;
+                let active = false;
+
+                const start = (e) => {
+                    if (e.cancelable) e.preventDefault();
+                    if (active) return;
+                    active = true;
+                    btn.classList.add('active-touch');
+                    triggerHaptic(hapticMs);
+                    ensureAudio();
+                    onDown();
+                };
+
+                const stop = (e) => {
+                    if (e && e.cancelable) e.preventDefault();
+                    if (!active) return;
+                    active = false;
+                    btn.classList.remove('active-touch');
+                    onUp();
+                };
+
+                btn.addEventListener('touchstart', start, { passive: false });
+                btn.addEventListener('touchend', stop, { passive: false });
+                btn.addEventListener('touchcancel', stop, { passive: false });
+                btn.addEventListener('mousedown', start);
+                btn.addEventListener('mouseup', stop);
+                btn.addEventListener('mouseleave', stop);
+            };
+
+            // 単発タップボタン (回転・ハードドロップ用)
+            const setupTapButton = (id, actionFn, hapticMs = 14) => {
+                const btn = document.getElementById(id);
+                if (!btn) return;
+                const tap = (e) => {
+                    if (e.cancelable) e.preventDefault();
+                    btn.classList.add('active-touch');
+                    triggerHaptic(hapticMs);
+                    ensureAudio();
+                    actionFn();
+                    setTimeout(() => btn.classList.remove('active-touch'), 110);
+                };
+                btn.addEventListener('touchstart', tap, { passive: false });
+                btn.addEventListener('mousedown', tap);
+            };
+
+            // 左手十字キーのバインド
+            setupRepeatButton('btn-move-left', () => {
+                if (gameManager.playerBoard) gameManager.playerBoard.movePair(-1);
+            });
+            setupRepeatButton('btn-move-right', () => {
+                if (gameManager.playerBoard) gameManager.playerBoard.movePair(1);
+            });
+            setupHoldButton(
+                'btn-soft-drop',
+                () => { if (gameManager.playerBoard) gameManager.playerBoard.fastDrop = true; },
+                () => { if (gameManager.playerBoard) gameManager.playerBoard.fastDrop = false; }
+            );
+            setupTapButton('btn-hard-drop-left', () => {
+                if (gameManager.playerBoard) gameManager.playerBoard.hardDrop();
+            }, 20);
+
+            // 右手アクションボタンのバインド
+            setupTapButton('btn-rot-left', () => {
+                if (gameManager.playerBoard) gameManager.playerBoard.rotatePair(-1);
+            }, 12);
+            setupTapButton('btn-rot-right', () => {
+                if (gameManager.playerBoard) gameManager.playerBoard.rotatePair(1);
+            }, 12);
+            setupTapButton('btn-hard-drop-right', () => {
+                if (gameManager.playerBoard) gameManager.playerBoard.hardDrop();
+            }, 20);
+
+            // ==========================================
+            // 盤面キャンバス上の直接スワイプ・フリック・タップ操作
+            // ==========================================
+            const canvas = document.getElementById('game-canvas');
+            let touchStartX = 0;
+            let touchStartY = 0;
+            let touchStartTime = 0;
+            let lastMovedGridX = 0;
+            let isSwiping = false;
+
+            canvas.addEventListener('touchstart', (e) => {
+                if (e.touches.length !== 1) return;
+                const t = e.touches[0];
+                touchStartX = t.clientX;
+                touchStartY = t.clientY;
+                touchStartTime = Date.now();
+                lastMovedGridX = touchStartX;
+                isSwiping = true;
+                ensureAudio();
+            }, { passive: true });
+
+            canvas.addEventListener('touchmove', (e) => {
+                if (!isSwiping || e.touches.length !== 1) return;
+                const b = gameManager.playerBoard;
+                if (!b || b.state !== 'CONTROLLING') return;
+
+                const t = e.touches[0];
+                const curX = t.clientX;
+                const curY = t.clientY;
+
+                // 水平スワイプ：指がセルの幅（約26〜36px）動くごとに1マス移動
+                const cellPx = Math.max(24, canvas.clientWidth / b.cols);
+                const diffX = curX - lastMovedGridX;
+                if (Math.abs(diffX) >= cellPx) {
+                    const step = diffX > 0 ? 1 : -1;
+                    b.movePair(step);
+                    triggerHaptic(8);
+                    lastMovedGridX = curX;
+                }
+
+                // 下ドラッグ：下方向に一定以上引かれたらソフトドロップ
+                const diffY = curY - touchStartY;
+                if (diffY > 40) {
+                    b.fastDrop = true;
+                }
+            }, { passive: true });
+
+            canvas.addEventListener('touchend', (e) => {
+                if (!isSwiping) return;
+                isSwiping = false;
+                const b = gameManager.playerBoard;
+                if (b) b.fastDrop = false;
+
+                if (e.changedTouches.length !== 1) return;
+                const t = e.changedTouches[0];
+                const deltaX = t.clientX - touchStartX;
+                const deltaY = t.clientY - touchStartY;
+                const duration = Date.now() - touchStartTime;
+
+                // 短いタップ判定（移動が少なく250ms以内）
+                if (Math.abs(deltaX) < 18 && Math.abs(deltaY) < 18 && duration < 250) {
+                    if (b && b.state === 'CONTROLLING') {
+                        // キャンバスの左側タップで左回転、右側タップで右回転
+                        const rect = canvas.getBoundingClientRect();
+                        const relX = t.clientX - rect.left;
+                        if (relX < rect.width * 0.45) {
+                            b.rotatePair(-1);
+                        } else {
+                            b.rotatePair(1);
+                        }
+                        triggerHaptic(12);
+                    }
+                } else if (deltaY > 55 && Math.abs(deltaX) < 40 && duration < 260) {
+                    // 素早い下フリック：瞬時落下 (ハードドロップ)
+                    if (b && b.state === 'CONTROLLING') {
+                        b.hardDrop();
+                        triggerHaptic(22);
+                    }
+                }
+            }, { passive: true });
+
+            window.addEventListener('pointerdown', ensureAudio, { once: true });
         });
     </script>
 </body>

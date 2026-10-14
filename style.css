@@ -20,19 +20,27 @@
     padding: 0;
     user-select: none;
     -webkit-user-select: none;
+    -webkit-touch-callout: none;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    height: 100dvh;
+    overflow: hidden;
+    overscroll-behavior: none;
+    touch-action: none;
 }
 
 body {
     background: radial-gradient(circle at 50% 15%, #182038 0%, var(--bg-dark) 100%);
     font-family: 'Outfit', 'M PLUS Rounded 1c', sans-serif;
     color: var(--text-primary);
-    min-height: 100vh;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    overflow-x: hidden;
-    padding: 12px;
+    padding: 8px;
 }
 
 /* トップコンテナ */
@@ -41,8 +49,10 @@ body {
     flex-direction: column;
     align-items: center;
     width: 100%;
+    height: 100%;
     max-width: 1200px;
     position: relative;
+    justify-content: center;
 }
 
 /* ===================================================
@@ -53,16 +63,18 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 24px;
+    gap: 16px;
     width: 100%;
-    max-width: 580px;
-    padding: 36px 24px;
+    max-width: 520px;
+    max-height: 96dvh;
+    padding: 24px 20px;
     background: var(--card-bg);
     border: 1px solid var(--card-border);
     backdrop-filter: blur(16px);
     border-radius: 24px;
     box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6), 0 0 50px rgba(14, 165, 233, 0.2);
     text-align: center;
+    overflow-y: auto;
 }
 
 .logo-container {
@@ -72,43 +84,43 @@ body {
 }
 
 .title-logo {
-    font-size: 3.4rem;
+    font-size: 2.8rem;
     font-weight: 900;
-    letter-spacing: 3px;
+    letter-spacing: 2px;
     background: linear-gradient(135deg, #ff3b5c, #f59e0b, #10b981, #0ea5e9, #a855f7);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    filter: drop-shadow(0 0 20px rgba(245, 158, 11, 0.5));
+    filter: drop-shadow(0 0 16px rgba(245, 158, 11, 0.5));
     animation: titleFloat 3s ease-in-out infinite;
 }
 
 @keyframes titleFloat {
     0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-6px); }
+    50% { transform: translateY(-4px); }
 }
 
 .subtitle-badge {
     background: rgba(255, 255, 255, 0.1);
     border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 20px;
-    padding: 4px 16px;
-    font-size: 0.85rem;
+    padding: 4px 14px;
+    font-size: 0.75rem;
     font-weight: 800;
     letter-spacing: 2px;
     color: #38bdf8;
-    margin-top: 4px;
+    margin-top: 2px;
 }
 
 .option-group {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
     width: 100%;
     text-align: left;
 }
 
 .option-label {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     font-weight: 800;
     color: var(--text-muted);
     letter-spacing: 1px;
@@ -127,11 +139,12 @@ body {
     color: var(--text-muted);
     font-family: inherit;
     font-weight: 800;
-    font-size: 0.9rem;
-    padding: 10px 12px;
+    font-size: 0.85rem;
+    padding: 10px 8px;
     border-radius: 12px;
     cursor: pointer;
     transition: all 0.2s ease;
+    touch-action: manipulation;
 }
 
 .select-btn:hover {
@@ -152,24 +165,20 @@ body {
     border: 1px solid rgba(255, 59, 92, 0.5);
     color: white;
     font-family: inherit;
-    font-size: 1.3rem;
+    font-size: 1.25rem;
     font-weight: 900;
     letter-spacing: 2px;
-    padding: 16px;
+    padding: 14px;
     border-radius: 16px;
     cursor: pointer;
     box-shadow: 0 8px 24px rgba(255, 59, 92, 0.5);
     transition: all 0.2s;
-    margin-top: 8px;
-}
-
-.start-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 12px 30px rgba(255, 59, 92, 0.7);
+    margin-top: 4px;
+    touch-action: manipulation;
 }
 
 .start-btn:active {
-    transform: translateY(1px);
+    transform: scale(0.98);
 }
 
 /* ===================================================
@@ -179,23 +188,28 @@ body {
     display: none;
     flex-direction: column;
     align-items: center;
-    gap: 16px;
     width: 100%;
+    height: 100%;
+    max-height: 100dvh;
+    justify-content: space-between;
 }
 
+/* ゲームヘッダー */
 .game-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     width: 100%;
     max-width: 980px;
-    padding: 0 8px;
+    padding: 4px 8px;
+    height: 44px;
+    flex-shrink: 0;
 }
 
 .header-left, .header-right {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
 }
 
 .icon-btn {
@@ -204,44 +218,59 @@ body {
     color: white;
     font-family: inherit;
     font-weight: 800;
-    font-size: 0.85rem;
-    padding: 8px 14px;
+    font-size: 0.8rem;
+    padding: 6px 12px;
     border-radius: 10px;
     cursor: pointer;
     transition: all 0.2s;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
+    touch-action: manipulation;
 }
 
-.icon-btn:hover {
-    background: rgba(51, 65, 85, 0.8);
-    border-color: rgba(255, 255, 255, 0.3);
+.icon-btn:active {
+    background: rgba(51, 65, 85, 0.9);
 }
 
-/* メイン対戦レイアウト */
+/* メイン対戦レイアウト (PC表示) */
 .battle-layout {
     display: flex;
     justify-content: center;
     align-items: flex-start;
     gap: 20px;
     width: 100%;
+    flex: 1;
+    overflow: hidden;
 }
 
 .board-wrapper {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
+    position: relative;
+}
+
+.player-board-group {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.side-info-column {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
 .player-tag {
-    font-size: 1.1rem;
+    font-size: 1rem;
     font-weight: 900;
     letter-spacing: 2px;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
 }
 
 .tag-1p { color: #38bdf8; text-shadow: 0 0 10px rgba(56, 189, 248, 0.5); }
@@ -251,14 +280,14 @@ body {
     position: relative;
     background: var(--board-bg);
     border-radius: 16px;
-    padding: 6px;
-    box-shadow: 0 0 35px rgba(14, 165, 233, 0.2), 0 12px 32px rgba(0, 0, 0, 0.8);
+    padding: 5px;
+    box-shadow: 0 0 30px rgba(14, 165, 233, 0.2), 0 12px 32px rgba(0, 0, 0, 0.8);
     border: 2px solid rgba(14, 165, 233, 0.35);
 }
 
 .cpu-board-container {
     border-color: rgba(244, 63, 94, 0.35);
-    box-shadow: 0 0 35px rgba(244, 63, 94, 0.2), 0 12px 32px rgba(0, 0, 0, 0.8);
+    box-shadow: 0 0 30px rgba(244, 63, 94, 0.2), 0 12px 32px rgba(0, 0, 0, 0.8);
 }
 
 canvas {
@@ -267,18 +296,18 @@ canvas {
     background: #060914;
 }
 
-/* 中央VS・おじゃまエリア */
+/* 中央VS・おじゃまエリア (PC) */
 .vs-center-area {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 16px;
+    gap: 12px;
     width: 120px;
-    padding-top: 40px;
+    padding-top: 36px;
 }
 
 .vs-logo {
-    font-size: 2.2rem;
+    font-size: 2rem;
     font-weight: 900;
     color: #f59e0b;
     text-shadow: 0 0 16px rgba(245, 158, 11, 0.6);
@@ -289,19 +318,19 @@ canvas {
     background: rgba(30, 41, 59, 0.8);
     border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 12px;
-    padding: 10px 8px;
+    padding: 8px;
     width: 100%;
     text-align: center;
 }
 
 .ojama-label {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     color: var(--text-muted);
     font-weight: 800;
 }
 
 .ojama-count {
-    font-size: 1.4rem;
+    font-size: 1.3rem;
     font-weight: 900;
     color: #f1f5f9;
 }
@@ -314,7 +343,7 @@ canvas {
     background: var(--card-bg);
     border: 1px solid var(--card-border);
     border-radius: 14px;
-    padding: 8px;
+    padding: 6px;
     backdrop-filter: blur(10px);
 }
 
@@ -323,19 +352,19 @@ canvas {
     background: var(--card-bg);
     border: 1px solid var(--card-border);
     border-radius: 12px;
-    padding: 8px 14px;
+    padding: 6px 12px;
     text-align: center;
     backdrop-filter: blur(10px);
 }
 
 .stat-label {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     color: var(--text-muted);
     font-weight: 800;
 }
 
 .stat-value {
-    font-size: 1.4rem;
+    font-size: 1.25rem;
     font-weight: 900;
     color: #38bdf8;
 }
@@ -350,7 +379,7 @@ canvas {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(7, 10, 20, 0.8);
+    background: rgba(7, 10, 20, 0.85);
     backdrop-filter: blur(12px);
     z-index: 1000;
     align-items: center;
@@ -361,17 +390,17 @@ canvas {
     background: var(--card-bg);
     border: 1px solid var(--card-border);
     border-radius: 20px;
-    padding: 32px;
-    width: 320px;
+    padding: 28px;
+    width: 300px;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 14px;
     text-align: center;
     box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7);
 }
 
 .pause-title {
-    font-size: 2rem;
+    font-size: 1.8rem;
     font-weight: 900;
     color: #f59e0b;
     letter-spacing: 2px;
@@ -383,16 +412,12 @@ canvas {
     color: white;
     font-family: inherit;
     font-weight: 800;
-    font-size: 1rem;
+    font-size: 0.95rem;
     padding: 12px;
     border-radius: 12px;
     cursor: pointer;
     transition: all 0.2s;
-}
-
-.modal-btn:hover {
-    background: rgba(51, 65, 85, 0.9);
-    border-color: rgba(255, 255, 255, 0.4);
+    touch-action: manipulation;
 }
 
 .modal-btn.primary {
@@ -401,14 +426,15 @@ canvas {
 }
 
 /* ===================================================
-   タッチコントローラー
+   スマホ専用コントローラー (Mobile Gamepad)
 =================================================== */
 .touch-controls {
     display: none;
     width: 100%;
-    max-width: 500px;
-    margin-top: 8px;
-    touch-action: manipulation;
+    max-width: 480px;
+    padding: 4px 10px 10px;
+    flex-shrink: 0;
+    touch-action: none;
 }
 
 .touch-grid {
@@ -416,63 +442,296 @@ canvas {
     justify-content: space-between;
     align-items: center;
     width: 100%;
-    padding: 0 12px;
-}
-
-.dpad {
-    display: grid;
-    grid-template-columns: repeat(3, 58px);
-    grid-template-rows: repeat(3, 52px);
-    gap: 4px;
-}
-
-.action-buttons {
-    display: flex;
     gap: 12px;
 }
 
+/* 左手十字キー */
+.dpad-container {
+    display: grid;
+    grid-template-columns: repeat(3, 56px);
+    grid-template-rows: repeat(2, 52px);
+    gap: 6px;
+}
+
+/* 右手アクションボタン */
+.action-container {
+    display: grid;
+    grid-template-columns: repeat(2, 58px);
+    grid-template-rows: repeat(2, 52px);
+    gap: 6px;
+}
+
 .touch-btn {
-    background: rgba(30, 41, 59, 0.85);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 12px;
-    color: white;
+    background: rgba(24, 34, 56, 0.88);
+    border: 1.5px solid rgba(255, 255, 255, 0.22);
+    border-radius: 14px;
+    color: #f8fafc;
     font-weight: 900;
-    font-size: 1.2rem;
+    font-size: 1.25rem;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+    transition: transform 0.06s, background 0.06s, border-color 0.06s;
+    touch-action: none;
+    -webkit-tap-highlight-color: transparent;
 }
 
-.touch-btn:active {
-    background: rgba(14, 165, 233, 0.7);
-    transform: scale(0.96);
+.touch-btn:active, .touch-btn.active-touch {
+    background: linear-gradient(135deg, #0284c7, #0369a1);
+    border-color: #38bdf8;
+    transform: scale(0.92);
+    box-shadow: 0 0 15px rgba(56, 189, 248, 0.6);
 }
 
 .touch-btn.rot {
-    width: 62px;
-    height: 62px;
-    border-radius: 50%;
-    background: rgba(245, 158, 11, 0.4);
-    border-color: rgba(245, 158, 11, 0.6);
+    background: rgba(245, 158, 11, 0.25);
+    border-color: rgba(245, 158, 11, 0.5);
+    color: #fde68a;
+    font-size: 1.1rem;
 }
 
-.touch-btn.rot:active {
-    background: rgba(245, 158, 11, 0.8);
+.touch-btn.rot:active, .touch-btn.rot.active-touch {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    border-color: #fbbf24;
+    color: white;
+    box-shadow: 0 0 15px rgba(245, 158, 11, 0.7);
 }
 
-@media (max-width: 900px) {
+.touch-btn.hard-drop {
+    background: rgba(239, 68, 68, 0.25);
+    border-color: rgba(239, 68, 68, 0.5);
+    color: #fca5a5;
+    font-size: 1.3rem;
+}
+
+.touch-btn.hard-drop:active, .touch-btn.hard-drop.active-touch {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    border-color: #f87171;
+    color: white;
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.7);
+}
+
+.touch-btn.span-2 {
+    grid-column: span 2;
+    font-size: 1.05rem;
+    letter-spacing: 1px;
+}
+
+/* ===================================================
+   📱 スマートフォン専用レイアウト (max-width: 768px)
+=================================================== */
+@media (max-width: 768px) {
+    body {
+        padding: 4px;
+        justify-content: flex-start;
+    }
+
+    .title-logo {
+        font-size: 2.2rem;
+    }
+
+    /* ゲーム画面を1画面 100dvh に完全収容 */
+    #game-screen {
+        height: 100dvh;
+        max-height: 100dvh;
+        overflow: hidden;
+    }
+
+    .game-header {
+        padding: 2px 4px;
+        height: 38px;
+    }
+
+    .icon-btn {
+        padding: 4px 8px;
+        font-size: 0.75rem;
+    }
+
+    /* メイン対戦レイアウト：縦配置＆スケーリング */
     .battle-layout {
         flex-direction: column;
         align-items: center;
-    }
-    .vs-center-area {
-        flex-direction: row;
-        width: 100%;
         justify-content: center;
-        padding-top: 0;
+        gap: 0;
+        position: relative;
+        flex: 1;
+        width: 100%;
     }
+
+    /* 1Pプレイヤーボード */
+    .board-wrapper {
+        gap: 2px;
+        transform-origin: center top;
+    }
+
+    .player-tag {
+        display: none; /* スマホではヘッダーやミニ表示に統合 */
+    }
+
+    /* 1Pボードとサイド情報の組み合わせ */
+    .player-board-group {
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+        gap: 8px;
+        position: relative;
+    }
+
+    /* 1Pキャンバスのサイズ調整（画面縦幅にフィット） */
+    #game-canvas {
+        max-height: 50dvh;
+        width: auto !important;
+        height: auto !important;
+        object-fit: contain;
+    }
+
+    /* サイド情報（NEXT、スコア、おじゃま）をコンパクトに */
+    .side-info-column {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        width: 72px;
+    }
+
+    .next-wrapper {
+        padding: 4px;
+        border-radius: 10px;
+    }
+
+    #next-canvas {
+        width: 60px !important;
+        height: 140px !important;
+    }
+
+    .stat-card {
+        padding: 4px 6px;
+        border-radius: 8px;
+    }
+
+    .stat-label {
+        font-size: 0.65rem;
+    }
+
+    .stat-value {
+        font-size: 1rem;
+    }
+
+    /* VS対戦時：CPUボードを右上にミニウィンドウ（PiP）表示！ */
+    #cpu-board-area {
+        position: absolute;
+        top: 0;
+        right: 4px;
+        transform: scale(0.38);
+        transform-origin: top right;
+        z-index: 20;
+        pointer-events: none;
+        opacity: 0.95;
+    }
+
+    #cpu-board-area .player-tag {
+        display: flex;
+        font-size: 1.4rem;
+        background: rgba(0, 0, 0, 0.7);
+        padding: 2px 8px;
+        border-radius: 6px;
+    }
+
+    #cpu-board-area .next-wrapper {
+        display: none; /* CPUのNEXTはミニ画面では隠して省スペース */
+    }
+
+    /* 中央VSエリアをスマホ用ミニバッジに変更 */
+    .vs-center-area {
+        position: absolute;
+        top: -34px;
+        left: 50%;
+        transform: translateX(-50%);
+        flex-direction: row;
+        width: auto;
+        padding-top: 0;
+        gap: 8px;
+        z-index: 30;
+    }
+
+    .vs-logo {
+        display: none;
+    }
+
+    .ojama-meter {
+        padding: 2px 8px;
+        border-radius: 8px;
+        width: auto;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .ojama-label {
+        font-size: 0.65rem;
+    }
+
+    .ojama-count {
+        font-size: 0.9rem;
+    }
+
+    /* タッチコントローラー常時表示 */
     .touch-controls {
         display: block;
+    }
+
+    /* タイトル画面のスマホ最適化 */
+    #title-screen {
+        max-width: 95%;
+        padding: 16px 14px;
+        gap: 12px;
+    }
+
+    .title-logo {
+        font-size: 2.1rem;
+    }
+
+    .option-group {
+        gap: 4px;
+    }
+
+    .select-btn {
+        padding: 8px 6px;
+        font-size: 0.8rem;
+    }
+
+    .start-btn {
+        padding: 12px;
+        font-size: 1.15rem;
+    }
+}
+
+/* 画面幅400px以下の小型スマホ向け微調整 */
+@media (max-width: 400px) {
+    .dpad-container {
+        grid-template-columns: repeat(3, min(50px, 28vw));
+        grid-template-rows: repeat(2, 48px);
+        gap: 4px;
+    }
+
+    .action-container {
+        grid-template-columns: repeat(2, min(54px, 30vw));
+        grid-template-rows: repeat(2, 48px);
+        gap: 4px;
+    }
+
+    .touch-btn {
+        font-size: 1.1rem;
+    }
+
+    .side-info-column {
+        width: 64px;
+        gap: 4px;
+    }
+
+    #next-canvas {
+        width: 52px !important;
+        height: 120px !important;
     }
 }
