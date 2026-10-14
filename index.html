@@ -64,12 +64,12 @@
             <!-- ヘッダー (ナビゲーション・ポーズ・設定) -->
             <div class="game-header">
                 <div class="header-left">
-                    <button id="btn-pause-header" class="icon-btn">⏸ ポーズ (Esc)</button>
-                    <button id="btn-title-header" class="icon-btn">🏠 タイトル</button>
+                    <button id="btn-pause-header" class="icon-btn">⏸ <span class="header-btn-text">ポーズ (Esc)</span></button>
+                    <button id="btn-title-header" class="icon-btn">🏠 <span class="header-btn-text">タイトル</span></button>
                 </div>
                 <div class="header-right">
-                    <button id="game-btn-bgm" class="icon-btn">🎵 BGM: ON</button>
-                    <button id="game-btn-se" class="icon-btn">🔊 SE: ON</button>
+                    <button id="game-btn-bgm" class="icon-btn">🎵 <span class="header-btn-text">BGM: ON</span></button>
+                    <button id="game-btn-se" class="icon-btn">🔊 <span class="header-btn-text">SE: ON</span></button>
                 </div>
             </div>
 
@@ -234,13 +234,20 @@
                 const bgmActive = window.midiPlayer && !window.midiPlayer.isMuted;
                 const seActive = window.soundEngine && !window.soundEngine.isMuted;
 
-                const bgmText = bgmActive ? '🎵 BGM: ON' : '🔇 BGM: OFF';
-                const seText = seActive ? '🔊 SE: ON' : '🔇 SE: OFF';
+                const bgmIcon = bgmActive ? '🎵' : '🔇';
+                const seIcon = seActive ? '🔊' : '🔇';
+                const bgmStatus = bgmActive ? 'ON' : 'OFF';
+                const seStatus = seActive ? 'ON' : 'OFF';
 
-                document.getElementById('title-btn-bgm').textContent = bgmText;
-                document.getElementById('game-btn-bgm').textContent = bgmText;
-                document.getElementById('title-btn-se').textContent = seText;
-                document.getElementById('game-btn-se').textContent = seText;
+                const titleBgm = document.getElementById('title-btn-bgm');
+                const gameBgm = document.getElementById('game-btn-bgm');
+                const titleSe = document.getElementById('title-btn-se');
+                const gameSe = document.getElementById('game-btn-se');
+
+                if (titleBgm) titleBgm.textContent = `${bgmIcon} BGM: ${bgmStatus}`;
+                if (gameBgm) gameBgm.innerHTML = `${bgmIcon} <span class="header-btn-text">BGM: ${bgmStatus}</span>`;
+                if (titleSe) titleSe.textContent = `${seIcon} 効果音: ${seStatus}`;
+                if (gameSe) gameSe.innerHTML = `${seIcon} <span class="header-btn-text">SE: ${seStatus}</span>`;
             };
 
             const toggleBgm = () => {

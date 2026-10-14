@@ -347,6 +347,11 @@ canvas {
     backdrop-filter: blur(10px);
 }
 
+#next-canvas {
+    width: 90px;
+    height: 208px;
+}
+
 /* ステータスカード */
 .stat-card {
     background: var(--card-bg);
@@ -523,13 +528,21 @@ canvas {
    📱 スマートフォン専用レイアウト (max-width: 768px)
 =================================================== */
 @media (max-width: 768px) {
+    /* 1. 幅オーバーフローの完全防止 */
+    html, body, .app-container, #game-screen {
+        width: 100vw !important;
+        max-width: 100vw !important;
+        overflow-x: hidden !important;
+        box-sizing: border-box !important;
+    }
+
     body {
-        padding: 4px;
+        padding: 0;
         justify-content: flex-start;
     }
 
     .title-logo {
-        font-size: 2.2rem;
+        font-size: 2.1rem;
     }
 
     /* ゲーム画面を1画面 100dvh に完全収容 */
@@ -539,92 +552,133 @@ canvas {
         overflow: hidden;
     }
 
+    /* 2. ヘッダーのコンパクト化 (スマホ時はテキストを隠してアイコン化し、幅超過を根絶) */
     .game-header {
-        padding: 2px 4px;
+        width: 100% !important;
+        max-width: 100vw !important;
+        padding: 4px 8px;
         height: 38px;
+        box-sizing: border-box;
+        justify-content: space-between;
+    }
+
+    .header-left, .header-right {
+        gap: 6px;
     }
 
     .icon-btn {
         padding: 4px 8px;
         font-size: 0.75rem;
+        white-space: nowrap;
     }
 
-    /* メイン対戦レイアウト：縦配置＆スケーリング */
+    .header-btn-text {
+        display: none;
+    }
+
+    /* 3. メイン対戦レイアウト：縦配置＆幅完全制限 */
     .battle-layout {
+        width: 100% !important;
+        max-width: 100vw !important;
         flex-direction: column;
         align-items: center;
         justify-content: center;
         gap: 0;
         position: relative;
         flex: 1;
-        width: 100%;
+        overflow: hidden;
+        box-sizing: border-box;
+        padding: 2px 4px;
     }
 
     /* 1Pプレイヤーボード */
     .board-wrapper {
+        width: 100%;
+        max-width: 100%;
         gap: 2px;
         transform-origin: center top;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
     }
 
     .player-tag {
         display: none; /* スマホではヘッダーやミニ表示に統合 */
     }
 
-    /* 1Pボードとサイド情報の組み合わせ */
+    /* 4. 1Pボードとサイド情報の組み合わせ (確実に左右中央に収める) */
     .player-board-group {
         display: flex;
-        align-items: flex-start;
+        align-items: center;
         justify-content: center;
         gap: 8px;
-        position: relative;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
     }
 
-    /* 1Pキャンバスのサイズ調整（画面縦幅にフィット） */
+    .board-container {
+        flex-shrink: 1;
+        padding: 4px;
+    }
+
+    /* 1Pキャンバスのサイズ調整（画面縦幅＆横幅に完全フィット） */
     #game-canvas {
-        max-height: 50dvh;
+        max-height: 48dvh;
+        max-width: calc(100vw - 86px) !important;
         width: auto !important;
         height: auto !important;
         object-fit: contain;
     }
 
-    /* サイド情報（NEXT、スコア、おじゃま）をコンパクトに */
+    /* 5. サイド情報（NEXTぷよ・スコア・連鎖）をコンパクトかつ絶対に見切れない設計に */
     .side-info-column {
+        width: 68px;
+        flex-shrink: 0;
         display: flex;
         flex-direction: column;
         gap: 6px;
-        width: 72px;
     }
 
     .next-wrapper {
+        background: rgba(22, 28, 48, 0.9);
+        border: 1.5px solid rgba(14, 165, 233, 0.4);
+        border-radius: 12px;
         padding: 4px;
-        border-radius: 10px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
     }
 
     #next-canvas {
         width: 60px !important;
-        height: 140px !important;
+        height: 138px !important;
+        display: block;
     }
 
     .stat-card {
         padding: 4px 6px;
-        border-radius: 8px;
+        border-radius: 10px;
     }
 
     .stat-label {
-        font-size: 0.65rem;
+        font-size: 0.62rem;
     }
 
     .stat-value {
-        font-size: 1rem;
+        font-size: 0.95rem;
     }
 
-    /* VS対戦時：CPUボードを右上にミニウィンドウ（PiP）表示！ */
+    /* 6. VS対戦時：CPUボードを左上に配置（1PのNEXTぷよと絶対に被らない！） */
     #cpu-board-area {
         position: absolute;
-        top: 0;
-        right: 4px;
-        transform: scale(0.38);
-        transform-origin: top right;
+        top: 4px;
+        left: 6px;
+        right: auto;
+        transform: scale(0.32);
+        transform-origin: top left;
         z-index: 20;
         pointer-events: none;
         opacity: 0.95;
@@ -632,27 +686,27 @@ canvas {
 
     #cpu-board-area .player-tag {
         display: flex;
-        font-size: 1.4rem;
-        background: rgba(0, 0, 0, 0.7);
+        font-size: 1.3rem;
+        background: rgba(0, 0, 0, 0.75);
         padding: 2px 8px;
         border-radius: 6px;
     }
 
     #cpu-board-area .next-wrapper {
-        display: none; /* CPUのNEXTはミニ画面では隠して省スペース */
+        display: none !important; /* CPUのNEXTはミニ画面では隠して省スペース */
     }
 
     /* 中央VSエリアをスマホ用ミニバッジに変更 */
     .vs-center-area {
         position: absolute;
-        top: -34px;
+        top: 4px;
         left: 50%;
         transform: translateX(-50%);
         flex-direction: row;
         width: auto;
         padding-top: 0;
-        gap: 8px;
-        z-index: 30;
+        gap: 6px;
+        z-index: 25;
     }
 
     .vs-logo {
@@ -660,7 +714,7 @@ canvas {
     }
 
     .ojama-meter {
-        padding: 2px 8px;
+        padding: 2px 6px;
         border-radius: 8px;
         width: auto;
         display: flex;
@@ -669,16 +723,20 @@ canvas {
     }
 
     .ojama-label {
-        font-size: 0.65rem;
+        font-size: 0.6rem;
     }
 
     .ojama-count {
-        font-size: 0.9rem;
+        font-size: 0.85rem;
     }
 
-    /* タッチコントローラー常時表示 */
+    /* 7. コントローラー常時表示＆幅制限 */
     .touch-controls {
         display: block;
+        width: 100%;
+        max-width: 100vw;
+        box-sizing: border-box;
+        padding: 4px 8px 10px;
     }
 
     /* タイトル画面のスマホ最適化 */
@@ -686,10 +744,6 @@ canvas {
         max-width: 95%;
         padding: 16px 14px;
         gap: 12px;
-    }
-
-    .title-logo {
-        font-size: 2.1rem;
     }
 
     .option-group {
@@ -710,19 +764,19 @@ canvas {
 /* 画面幅400px以下の小型スマホ向け微調整 */
 @media (max-width: 400px) {
     .dpad-container {
-        grid-template-columns: repeat(3, min(50px, 28vw));
-        grid-template-rows: repeat(2, 48px);
+        grid-template-columns: repeat(3, min(48px, 28vw));
+        grid-template-rows: repeat(2, 46px);
         gap: 4px;
     }
 
     .action-container {
-        grid-template-columns: repeat(2, min(54px, 30vw));
-        grid-template-rows: repeat(2, 48px);
+        grid-template-columns: repeat(2, min(52px, 30vw));
+        grid-template-rows: repeat(2, 46px);
         gap: 4px;
     }
 
     .touch-btn {
-        font-size: 1.1rem;
+        font-size: 1.05rem;
     }
 
     .side-info-column {
@@ -731,7 +785,11 @@ canvas {
     }
 
     #next-canvas {
-        width: 52px !important;
-        height: 120px !important;
+        width: 56px !important;
+        height: 130px !important;
+    }
+
+    #game-canvas {
+        max-width: calc(100vw - 80px) !important;
     }
 }
