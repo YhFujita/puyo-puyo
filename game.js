@@ -1089,6 +1089,123 @@ class PuyoBoard {
 }
 
 /**
+ * 本家ぷよぷよ風 おじゃま予告トレイレンダラー
+ * 彗星(720), 月(360), 星(180), 岩(30), 大(6), 小(1)
+ */
+class OjamaTrayRenderer {
+    static getValues() {
+        return [
+            { type: 'comet', value: 720 },
+            { type: 'moon',  value: 360 },
+            { type: 'star',  value: 180 },
+            { type: 'rock',  value: 30 },
+            { type: 'big',   value: 6 },
+            { type: 'small', value: 1 }
+        ];
+    }
+
+    static getSvg(type) {
+        switch (type) {
+            case 'small':
+                return `<svg class="ojama-icon ojama-small" viewBox="0 0 32 32" title="小ぷよ (1個)">
+                    <circle cx="16" cy="16" r="13" fill="url(#grad-ojama-small)" stroke="#94a3b8" stroke-width="1.5" />
+                    <ellipse cx="16" cy="16" rx="5.5" ry="5.5" fill="#ef4444" opacity="0.85" />
+                    <circle cx="16" cy="16" r="2.5" fill="#1e293b" />
+                    <circle cx="13" cy="12" r="2" fill="#ffffff" opacity="0.8" />
+                </svg>`;
+            case 'big':
+                return `<svg class="ojama-icon ojama-big" viewBox="0 0 36 36" title="大ぷよ (6個)">
+                    <circle cx="18" cy="18" r="15" fill="url(#grad-ojama-big)" stroke="#f43f5e" stroke-width="2" />
+                    <ellipse cx="18" cy="18" rx="7.5" ry="7.5" fill="#e11d48" />
+                    <circle cx="18" cy="18" r="3.2" fill="#450a0a" />
+                    <circle cx="14" cy="13" r="2.8" fill="#ffffff" opacity="0.85" />
+                </svg>`;
+            case 'rock':
+                return `<svg class="ojama-icon ojama-rock" viewBox="0 0 40 40" title="岩ぷよ (30個)">
+                    <polygon points="12,4 28,4 38,15 35,35 8,36 2,20" fill="url(#grad-ojama-rock)" stroke="#cbd5e1" stroke-width="2" />
+                    <polygon points="14,8 26,8 33,18 29,30 11,31 6,20" fill="#334155" opacity="0.4" />
+                    <circle cx="14" cy="18" r="3.2" fill="#ef4444" />
+                    <circle cx="26" cy="18" r="3.2" fill="#ef4444" />
+                    <circle cx="13" cy="17" r="1.2" fill="#ffffff" />
+                    <circle cx="25" cy="17" r="1.2" fill="#ffffff" />
+                </svg>`;
+            case 'star':
+                return `<svg class="ojama-icon ojama-star" viewBox="0 0 40 40" title="星ぷよ (180個)">
+                    <polygon points="20,2 25,14 38,15 28,24 32,37 20,29 8,37 12,24 2,15 15,14" fill="url(#grad-ojama-star)" stroke="#f59e0b" stroke-width="1.8" />
+                    <circle cx="16" cy="20" r="2" fill="#78350f" />
+                    <circle cx="24" cy="20" r="2" fill="#78350f" />
+                </svg>`;
+            case 'moon':
+                return `<svg class="ojama-icon ojama-moon" viewBox="0 0 40 40" title="月ぷよ (360個)">
+                    <path d="M 28 6 A 16 16 0 1 0 34 28 A 13 13 0 1 1 28 6 Z" fill="url(#grad-ojama-moon)" stroke="#0284c7" stroke-width="2" />
+                    <circle cx="18" cy="22" r="2.5" fill="#0369a1" />
+                </svg>`;
+            case 'comet':
+                return `<svg class="ojama-icon ojama-comet" viewBox="0 0 44 44" title="彗星ぷよ (720個)">
+                    <polygon points="20,22 4,40 16,28" fill="#f472b6" opacity="0.75" />
+                    <circle cx="26" cy="18" r="13" fill="url(#grad-ojama-comet)" stroke="#db2777" stroke-width="2" />
+                    <circle cx="26" cy="18" r="5" fill="#fdf2f8" />
+                    <circle cx="26" cy="18" r="2.5" fill="#9d174d" />
+                </svg>`;
+            default:
+                return '';
+        }
+    }
+
+    static calculateIcons(count) {
+        if (count <= 0) return [];
+        const icons = [];
+        let rem = count;
+        const values = OjamaTrayRenderer.getValues();
+
+        for (const item of values) {
+            while (rem >= item.value) {
+                icons.push(item.type);
+                rem -= item.value;
+                if (icons.length >= 8) break;
+            }
+            if (icons.length >= 8) break;
+        }
+        return icons;
+    }
+
+    static update(pendingCount, wrapperEl, iconsEl, badgeEl, stateObj) {
+        if (!wrapperEl || !iconsEl || !badgeEl) return;
+        if (stateObj && stateObj.lastCount === pendingCount) return;
+        if (stateObj) stateObj.lastCount = pendingCount;
+
+        if (pendingCount <= 0) {
+            wrapperEl.classList.remove('has-ojama', 'danger');
+            badgeEl.style.display = 'none';
+            badgeEl.classList.remove('badge-danger');
+            iconsEl.innerHTML = '';
+            return;
+        }
+
+        wrapperEl.classList.add('has-ojama');
+        if (pendingCount >= 30) {
+            wrapperEl.classList.add('danger');
+            badgeEl.classList.add('badge-danger');
+        } else {
+            wrapperEl.classList.remove('danger');
+            badgeEl.classList.remove('badge-danger');
+        }
+
+        // 予告おじゃま数を明確に表示
+        badgeEl.textContent = `${pendingCount}`;
+        badgeEl.style.display = 'inline-flex';
+
+        // 本家風アイコン群の生成
+        const icons = OjamaTrayRenderer.calculateIcons(pendingCount);
+        let html = '';
+        for (const type of icons) {
+            html += OjamaTrayRenderer.getSvg(type);
+        }
+        iconsEl.innerHTML = html;
+    }
+}
+
+/**
  * ゲーム全体の管理クラス (GameManager)
  */
 class GameManager {
@@ -1102,6 +1219,10 @@ class GameManager {
 
         this.playerBoard = null;
         this.cpuBoard = null;
+
+        // おじゃま予告トレイ状態
+        this.p1TrayState = { lastCount: -1 };
+        this.cpuTrayState = { lastCount: -1 };
 
         // キー入力管理
         this.keys = { left: false, right: false, down: false };
@@ -1242,6 +1363,11 @@ class GameManager {
         const vsCenter = document.getElementById('vs-center-area');
         if (vsCenter) vsCenter.style.display = (mode === 'vs') ? 'flex' : 'none';
 
+        // おじゃま予告トレイのリセット
+        this.p1TrayState = { lastCount: -1 };
+        this.cpuTrayState = { lastCount: -1 };
+        this.updateStatsUI();
+
         if (!this.animFrameId) {
             this.loop();
         }
@@ -1272,6 +1398,16 @@ class GameManager {
         document.getElementById('pause-modal').style.display = 'none';
         const resModal = document.getElementById('result-modal');
         if (resModal) resModal.style.display = 'none';
+
+        // おじゃま予告トレイの非表示
+        const p1Wrap = document.getElementById('p1-ojama-wrapper');
+        const cpuWrap = document.getElementById('cpu-ojama-wrapper');
+        if (p1Wrap) p1Wrap.classList.remove('has-ojama', 'danger');
+        if (cpuWrap) cpuWrap.classList.remove('has-ojama', 'danger');
+        const p1Badge = document.getElementById('p1-ojama-badge');
+        const cpuBadge = document.getElementById('cpu-ojama-badge');
+        if (p1Badge) p1Badge.style.display = 'none';
+        if (cpuBadge) cpuBadge.style.display = 'none';
     }
 
     /**
@@ -1394,8 +1530,28 @@ class GameManager {
         if (cEl) cEl.textContent = this.playerBoard.maxChain;
         if (pEl) pEl.textContent = this.playerBoard.totalPopped;
 
-        if (ojama1El) ojama1El.textContent = this.playerBoard.pendingOjama;
-        if (ojama2El && this.cpuBoard) ojama2El.textContent = this.cpuBoard.pendingOjama;
+        const p1Ojama = this.playerBoard.pendingOjama;
+        const cpuOjama = (this.cpuBoard) ? this.cpuBoard.pendingOjama : 0;
+
+        if (ojama1El) ojama1El.textContent = p1Ojama;
+        if (ojama2El && this.cpuBoard) ojama2El.textContent = cpuOjama;
+
+        // 1P 本家おじゃま予告トレイ更新（アイコン群＆予告数バッジ）
+        const p1Wrap = document.getElementById('p1-ojama-wrapper');
+        const p1Icons = document.getElementById('p1-ojama-icons');
+        const p1Badge = document.getElementById('p1-ojama-badge');
+        OjamaTrayRenderer.update(p1Ojama, p1Wrap, p1Icons, p1Badge, this.p1TrayState);
+
+        // CPU 本家おじゃま予告トレイ更新 (VSモード時)
+        const cpuWrap = document.getElementById('cpu-ojama-wrapper');
+        const cpuIcons = document.getElementById('cpu-ojama-icons');
+        const cpuBadge = document.getElementById('cpu-ojama-badge');
+        if (this.mode === 'vs') {
+            if (cpuWrap) cpuWrap.style.display = 'flex';
+            OjamaTrayRenderer.update(cpuOjama, cpuWrap, cpuIcons, cpuBadge, this.cpuTrayState);
+        } else if (cpuWrap) {
+            cpuWrap.style.display = 'none';
+        }
     }
 }
 

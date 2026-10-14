@@ -7,6 +7,43 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <!-- おじゃま予告ぷよSVGグラデーション定義 -->
+    <svg style="position: absolute; width: 0; height: 0; overflow: hidden;" aria-hidden="true">
+        <defs>
+            <radialGradient id="grad-ojama-small" cx="35%" cy="35%" r="65%">
+                <stop offset="0%" stop-color="#ffffff" />
+                <stop offset="45%" stop-color="#e2e8f0" />
+                <stop offset="100%" stop-color="#94a3b8" />
+            </radialGradient>
+            <radialGradient id="grad-ojama-big" cx="35%" cy="35%" r="65%">
+                <stop offset="0%" stop-color="#ffffff" />
+                <stop offset="40%" stop-color="#fca5a5" />
+                <stop offset="85%" stop-color="#ef4444" />
+                <stop offset="100%" stop-color="#b91c1c" />
+            </radialGradient>
+            <linearGradient id="grad-ojama-rock" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#94a3b8" />
+                <stop offset="40%" stop-color="#64748b" />
+                <stop offset="100%" stop-color="#334155" />
+            </linearGradient>
+            <radialGradient id="grad-ojama-star" cx="40%" cy="40%" r="60%">
+                <stop offset="0%" stop-color="#fef08a" />
+                <stop offset="60%" stop-color="#facc15" />
+                <stop offset="100%" stop-color="#d97706" />
+            </radialGradient>
+            <radialGradient id="grad-ojama-moon" cx="35%" cy="35%" r="65%">
+                <stop offset="0%" stop-color="#bae6fd" />
+                <stop offset="60%" stop-color="#38bdf8" />
+                <stop offset="100%" stop-color="#0284c7" />
+            </radialGradient>
+            <radialGradient id="grad-ojama-comet" cx="35%" cy="35%" r="65%">
+                <stop offset="0%" stop-color="#fbcfe8" />
+                <stop offset="50%" stop-color="#f472b6" />
+                <stop offset="100%" stop-color="#db2777" />
+            </radialGradient>
+        </defs>
+    </svg>
+
     <div class="app-container">
         <!-- ==============================================
              タイトル画面
@@ -77,9 +114,20 @@
             <div class="battle-layout">
                 <!-- 1P ボードエリア -->
                 <div class="board-wrapper">
-                    <div class="player-tag tag-1p">
-                        <span>YOU (1P)</span>
+                    <div class="board-header-row">
+                        <div class="player-tag tag-1p">
+                            <span>YOU (1P)</span>
+                        </div>
                     </div>
+
+                    <!-- 1P おじゃまぷよ予告トレイ（本家予告ぷよアイコン＆予告数バッジ） -->
+                    <div class="ojama-tray-wrapper" id="p1-ojama-wrapper">
+                        <div class="ojama-tray" id="p1-ojama-tray">
+                            <div class="ojama-icons-list" id="p1-ojama-icons"></div>
+                            <div class="ojama-count-badge" id="p1-ojama-badge" style="display: none;">0</div>
+                        </div>
+                    </div>
+
                     <div class="player-board-group">
                         <div class="board-container">
                             <canvas id="game-canvas"></canvas>
@@ -115,9 +163,20 @@
 
                 <!-- 2P CPU ボードエリア (VS対戦時) -->
                 <div id="cpu-board-area" class="board-wrapper" style="display: none;">
-                    <div class="player-tag tag-2p">
-                        <span>CPU (2P)</span>
+                    <div class="board-header-row">
+                        <div class="player-tag tag-2p">
+                            <span>CPU (2P)</span>
+                        </div>
                     </div>
+
+                    <!-- CPU おじゃまぷよ予告トレイ（本家予告ぷよアイコン＆予告数バッジ） -->
+                    <div class="ojama-tray-wrapper" id="cpu-ojama-wrapper">
+                        <div class="ojama-tray" id="cpu-ojama-tray">
+                            <div class="ojama-icons-list" id="cpu-ojama-icons"></div>
+                            <div class="ojama-count-badge" id="cpu-ojama-badge" style="display: none;">0</div>
+                        </div>
+                    </div>
+
                     <div class="player-board-group">
                         <div class="board-container cpu-board-container">
                             <canvas id="cpu-canvas"></canvas>

@@ -276,6 +276,127 @@ body {
 .tag-1p { color: #38bdf8; text-shadow: 0 0 10px rgba(56, 189, 248, 0.5); }
 .tag-2p { color: #f43f5e; text-shadow: 0 0 10px rgba(244, 63, 94, 0.5); }
 
+/* ===================================================
+   おじゃまぷよ予告トレイ (本家予告ぷよ & 予告数バッジ)
+=================================================== */
+.board-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.ojama-tray-wrapper {
+    width: 100%;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.25s ease;
+    opacity: 0.35;
+}
+
+.ojama-tray-wrapper.has-ojama {
+    opacity: 1;
+}
+
+.ojama-tray {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    height: 36px;
+    padding: 2px 10px;
+    background: rgba(15, 23, 42, 0.7);
+    border: 1.5px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    transition: all 0.25s ease;
+    box-sizing: border-box;
+}
+
+.ojama-tray-wrapper.has-ojama .ojama-tray {
+    background: rgba(22, 32, 54, 0.95);
+    border-color: rgba(245, 158, 11, 0.6);
+    box-shadow: 0 0 14px rgba(245, 158, 11, 0.3);
+}
+
+.ojama-tray-wrapper.danger .ojama-tray {
+    border-color: rgba(239, 68, 68, 0.9);
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.6);
+    animation: ojama-danger-pulse 0.9s ease-in-out infinite alternate;
+}
+
+.ojama-icons-list {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: 1;
+    overflow: hidden;
+    height: 100%;
+}
+
+.ojama-icon {
+    display: block;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+    animation: ojama-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    flex-shrink: 0;
+}
+
+.ojama-small { width: 22px; height: 22px; }
+.ojama-big   { width: 26px; height: 26px; }
+.ojama-rock  { width: 30px; height: 30px; }
+.ojama-star  { width: 28px; height: 28px; }
+.ojama-moon  { width: 28px; height: 28px; }
+.ojama-comet { width: 32px; height: 32px; }
+
+.ojama-count-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 900;
+    color: #ffffff;
+    padding: 2px 8px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    margin-left: 6px;
+    flex-shrink: 0;
+    letter-spacing: 0.5px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    animation: ojama-badge-bounce 0.3s ease-out;
+}
+
+.ojama-count-badge.badge-danger {
+    background: linear-gradient(135deg, #ef4444, #b91c1c);
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.7);
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+@keyframes ojama-danger-pulse {
+    0% {
+        border-color: rgba(239, 68, 68, 0.6);
+        box-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
+    }
+    100% {
+        border-color: rgba(239, 68, 68, 1);
+        box-shadow: 0 0 22px rgba(239, 68, 68, 0.8), inset 0 0 8px rgba(239, 68, 68, 0.25);
+    }
+}
+
+@keyframes ojama-pop {
+    0% { transform: scale(0.3); opacity: 0; }
+    70% { transform: scale(1.15); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes ojama-badge-bounce {
+    0% { transform: scale(0.7); }
+    60% { transform: scale(1.15); }
+    100% { transform: scale(1); }
+}
+
 .board-container {
     position: relative;
     background: var(--board-bg);
@@ -690,6 +811,28 @@ canvas {
     .board-container {
         flex-shrink: 1;
         padding: 4px;
+    }
+
+    .ojama-tray-wrapper {
+        min-height: 30px;
+        margin-bottom: 2px;
+    }
+
+    .ojama-tray {
+        height: 30px;
+        padding: 1px 8px;
+    }
+
+    .ojama-small { width: 18px; height: 18px; }
+    .ojama-big   { width: 22px; height: 22px; }
+    .ojama-rock  { width: 26px; height: 26px; }
+    .ojama-star  { width: 24px; height: 24px; }
+    .ojama-moon  { width: 24px; height: 24px; }
+    .ojama-comet { width: 28px; height: 28px; }
+
+    .ojama-count-badge {
+        font-size: 0.85rem;
+        padding: 1px 6px;
     }
 
     /* 1Pキャンバスのサイズ調整（画面縦幅＆横幅に完全フィット） */
