@@ -516,13 +516,9 @@ class PuyoAI {
             if (p.pivot.x === oldX) {
                 // 移動が阻まれた場合の安全緊急回避
                 this.stuckCounter++;
-                if (this.stuckCounter > 1) {
-                    // 窒息列でなければその場で妥協、窒息列なら反対側へ
-                    if (p.pivot.x !== this.board.deathCol) {
-                        this.targetX = p.pivot.x;
-                    } else {
-                        this.targetX = (p.pivot.x > 0) ? p.pivot.x - 1 : p.pivot.x + 1;
-                    }
+                if (this.stuckCounter >= 2) {
+                    // 移動不能なので現在列を目標位置として妥協し、速やかに落下させる
+                    this.targetX = p.pivot.x;
                 }
             }
             return;
@@ -531,12 +527,8 @@ class PuyoAI {
             this.board.movePair(-1);
             if (p.pivot.x === oldX) {
                 this.stuckCounter++;
-                if (this.stuckCounter > 1) {
-                    if (p.pivot.x !== this.board.deathCol) {
-                        this.targetX = p.pivot.x;
-                    } else {
-                        this.targetX = (p.pivot.x < this.board.cols - 1) ? p.pivot.x + 1 : p.pivot.x - 1;
-                    }
+                if (this.stuckCounter >= 2) {
+                    this.targetX = p.pivot.x;
                 }
             }
             return;

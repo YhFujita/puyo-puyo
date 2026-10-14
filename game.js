@@ -130,11 +130,36 @@ class PuyoBoard {
         this.opponent = opponentBoard;
     }
 
-    spawnPair() {
-        if (this.grid[this.deathRow][this.deathCol] !== null) {
+    /**
+     * 窒息判定（ゲームオーバー判定）
+     * 1. 窒息マス（×印: deathCol, deathRow=1）またはゴースト行（y=0）にぷよがあるか？
+     * 2. 全列が最上段（y<=1）まで埋まっていてこれ以上配置できないか？
+     */
+    checkGameOver() {
+        if (this.state === 'GAME_OVER') return true;
+
+        if (this.grid[this.deathRow][this.deathCol] !== null || this.grid[0][this.deathCol] !== null) {
             this.gameOver();
-            return;
+            return true;
         }
+
+        let allFilled = true;
+        for (let x = 0; x < this.cols; x++) {
+            if (this.grid[1][x] === null) {
+                allFilled = false;
+                break;
+            }
+        }
+        if (allFilled) {
+            this.gameOver();
+            return true;
+        }
+
+        return false;
+    }
+
+    spawnPair() {
+        if (this.checkGameOver()) return;
 
         const next = this.getNextPair();
         const pivotPuyo = next.pivotPuyo;
@@ -148,10 +173,7 @@ class PuyoBoard {
 
         this.updateActivePairConnections();
 
-        if (this.grid[1][this.deathCol] !== null) {
-            this.gameOver();
-            return;
-        }
+        if (this.checkGameOver()) return;
 
         this.state = 'CONTROLLING';
         this.dropTimer = 0;
@@ -330,8 +352,8 @@ class PuyoBoard {
         }
         this.dropTimer++;
 
-        // CPUが最上段で目標列へスライド移動している間は自然落下を保留
-        if (this.isCPU && this.ai && p.pivot.y <= 1 && p.pivot.x !== this.ai.targetX) {
+        // CPUが最上段で目標列へスライド移動している間は自然落下を保留（スタック時は落下を継続）
+        if (this.isCPU && this.ai && p.pivot.y <= 1 && p.pivot.x !== this.ai.targetX && this.ai.stuckCounter < 2) {
             this.dropTimer = 0;
         }
 
@@ -354,7 +376,7 @@ class PuyoBoard {
         this.activePair = null;
 
         const findGroundY = (x, startY) => {
-            let y = startY;
+            let y = Math.max(0, startY);
             while (y + 1 < this.totalRows && this.grid[y + 1][x] === null) {
                 y++;
             }
@@ -373,38 +395,42 @@ class PuyoBoard {
             const lowerGroundY = findGroundY(col, lower.y);
             const upperGroundY = lowerGroundY - 1;
 
-            if (lowerGroundY === lower.y) {
-                this.grid[lower.y][col] = lower.puyo;
-                lower.puyo.triggerSquash(0.45);
-            } else {
-                chigiriOccurred = true;
-                lower.puyo.isFalling = true;
-                lower.puyo.setLookDirection(0, 1.0);
-                lower.puyo.triggerStretch(0.3);
-                this.fallingPuyos.push({
-                    puyo: lower.puyo,
-                    col: col,
-                    currentY: lower.y,
-                    targetY: lowerGroundY,
-                    vy: 0.15
-                });
+            if (lowerGroundY >= 0 && lowerGroundY < this.totalRows) {
+                if (lowerGroundY === lower.y) {
+                    this.grid[lower.y][col] = lower.puyo;
+                    lower.puyo.triggerSquash(0.45);
+                } else {
+                    chigiriOccurred = true;
+                    lower.puyo.isFalling = true;
+                    lower.puyo.setLookDirection(0, 1.0);
+                    lower.puyo.triggerStretch(0.3);
+                    this.fallingPuyos.push({
+                        puyo: lower.puyo,
+                        col: col,
+                        currentY: lower.y,
+                        targetY: lowerGroundY,
+                        vy: 0.15
+                    });
+                }
             }
 
-            if (upperGroundY === upper.y) {
-                this.grid[upper.y][col] = upper.puyo;
-                upper.puyo.triggerSquash(0.45);
-            } else {
-                chigiriOccurred = true;
-                upper.puyo.isFalling = true;
-                upper.puyo.setLookDirection(0, 1.0);
-                upper.puyo.triggerStretch(0.3);
-                this.fallingPuyos.push({
-                    puyo: upper.puyo,
-                    col: col,
-                    currentY: upper.y,
-                    targetY: upperGroundY,
-                    vy: 0.15
-                });
+            if (upperGroundY >= 0 && upperGroundY < this.totalRows) {
+                if (upperGroundY === upper.y) {
+                    this.grid[upper.y][col] = upper.puyo;
+                    upper.puyo.triggerSquash(0.45);
+                } else {
+                    chigiriOccurred = true;
+                    upper.puyo.isFalling = true;
+                    upper.puyo.setLookDirection(0, 1.0);
+                    upper.puyo.triggerStretch(0.3);
+                    this.fallingPuyos.push({
+                        puyo: upper.puyo,
+                        col: col,
+                        currentY: upper.y,
+                        targetY: upperGroundY,
+                        vy: 0.15
+                    });
+                }
             }
 
             if (chigiriOccurred) {
@@ -417,40 +443,44 @@ class PuyoBoard {
             const pivotGroundY = findGroundY(p.pivot.x, p.pivot.y);
             const childGroundY = findGroundY(p.child.x, p.child.y);
 
-            if (pivotGroundY === p.pivot.y) {
-                this.grid[p.pivot.y][p.pivot.x] = p.pivot.puyo;
-                p.pivot.puyo.triggerSquash(0.45);
-                if (!this.isCPU && window.soundEngine) window.soundEngine.playLand();
-            } else {
-                chigiriOccurred = true;
-                p.pivot.puyo.isFalling = true;
-                p.pivot.puyo.setLookDirection(0, 1.0);
-                p.pivot.puyo.triggerStretch(0.3);
-                this.fallingPuyos.push({
-                    puyo: p.pivot.puyo,
-                    col: p.pivot.x,
-                    currentY: p.pivot.y,
-                    targetY: pivotGroundY,
-                    vy: 0.15
-                });
+            if (pivotGroundY >= 0 && pivotGroundY < this.totalRows) {
+                if (pivotGroundY === p.pivot.y) {
+                    this.grid[p.pivot.y][p.pivot.x] = p.pivot.puyo;
+                    p.pivot.puyo.triggerSquash(0.45);
+                    if (!this.isCPU && window.soundEngine) window.soundEngine.playLand();
+                } else {
+                    chigiriOccurred = true;
+                    p.pivot.puyo.isFalling = true;
+                    p.pivot.puyo.setLookDirection(0, 1.0);
+                    p.pivot.puyo.triggerStretch(0.3);
+                    this.fallingPuyos.push({
+                        puyo: p.pivot.puyo,
+                        col: p.pivot.x,
+                        currentY: p.pivot.y,
+                        targetY: pivotGroundY,
+                        vy: 0.15
+                    });
+                }
             }
 
-            if (childGroundY === p.child.y) {
-                this.grid[p.child.y][p.child.x] = p.child.puyo;
-                p.child.puyo.triggerSquash(0.45);
-                if (!this.isCPU && window.soundEngine && !chigiriOccurred) window.soundEngine.playLand();
-            } else {
-                chigiriOccurred = true;
-                p.child.puyo.isFalling = true;
-                p.child.puyo.setLookDirection(0, 1.0);
-                p.child.puyo.triggerStretch(0.3);
-                this.fallingPuyos.push({
-                    puyo: p.child.puyo,
-                    col: p.child.x,
-                    currentY: p.child.y,
-                    targetY: childGroundY,
-                    vy: 0.15
-                });
+            if (childGroundY >= 0 && childGroundY < this.totalRows) {
+                if (childGroundY === p.child.y) {
+                    this.grid[p.child.y][p.child.x] = p.child.puyo;
+                    p.child.puyo.triggerSquash(0.45);
+                    if (!this.isCPU && window.soundEngine && !chigiriOccurred) window.soundEngine.playLand();
+                } else {
+                    chigiriOccurred = true;
+                    p.child.puyo.isFalling = true;
+                    p.child.puyo.setLookDirection(0, 1.0);
+                    p.child.puyo.triggerStretch(0.3);
+                    this.fallingPuyos.push({
+                        puyo: p.child.puyo,
+                        col: p.child.x,
+                        currentY: p.child.y,
+                        targetY: childGroundY,
+                        vy: 0.15
+                    });
+                }
             }
 
             if (chigiriOccurred) {
@@ -768,6 +798,9 @@ class PuyoBoard {
         }
 
         this.chainCount = 0;
+
+        // 連鎖終了時、窒息マス（×印）が埋まっていれば即座にゲームオーバー
+        if (this.checkGameOver()) return;
 
         // 連鎖終了後、おじゃまぷよが保留されていれば上から降らせる！
         if (this.pendingOjama > 0) {
@@ -1266,11 +1299,15 @@ class GameManager {
                 // CPUの敗北 ＝ プレイヤーの大勝利！！
                 if (window.soundEngine) window.soundEngine.playVictory();
                 if (this.playerBoard && window.particleManager) {
-                    window.particleManager.addText(this.playerBoard.width * 0.5, this.playerBoard.height * 0.35, 'YOU WIN!', '#f59e0b', 38);
-                    for (let i = 0; i < 50; i++) {
-                        const px = Math.random() * this.playerBoard.width;
-                        const py = Math.random() * this.playerBoard.height * 0.6;
-                        window.particleManager.addSparks(px, py, ['#ff3b5c', '#f59e0b', '#10b981', '#0ea5e9', '#a855f7'][i % 5], 10);
+                    try {
+                        window.particleManager.addText(this.playerBoard.width * 0.5, this.playerBoard.height * 0.35, 'YOU WIN!', '#f59e0b', 38);
+                        for (let i = 0; i < 60; i++) {
+                            const px = Math.random() * this.playerBoard.width;
+                            const py = Math.random() * this.playerBoard.height * 0.6;
+                            window.particleManager.addSparks(px, py, ['#ff3b5c', '#f59e0b', '#10b981', '#0ea5e9', '#a855f7'][i % 5], 10);
+                        }
+                    } catch (err) {
+                        console.error('Particle effect error:', err);
                     }
                 }
                 this.showResultModal('🎉 YOU WIN! 🎉', 'お見事！見事にCPUを撃破しました！', '#f59e0b');
@@ -1296,7 +1333,7 @@ class GameManager {
             if (chainEl && this.playerBoard) chainEl.textContent = `${this.playerBoard.maxChain} 連鎖`;
 
             if (modal) modal.style.display = 'flex';
-        }, 1100);
+        }, 900);
     }
 
     loop() {
@@ -1323,14 +1360,16 @@ class GameManager {
             if (this.playerBoard) this.playerBoard.update();
             if (this.cpuBoard) this.cpuBoard.update();
 
-            // パーティクル更新
-            if (window.particleManager) window.particleManager.update();
-
             this.updateStatsUI();
         }
 
-        // 描画
-        if (this.appState === 'PLAYING' || this.appState === 'PAUSED') {
+        // パーティクル更新（ゲームオーバー演出用にも動作）
+        if (window.particleManager && !this.isPaused) {
+            window.particleManager.update();
+        }
+
+        // 描画（PLAYING, PAUSED, GAME_OVERのいずれでも描画）
+        if (this.appState === 'PLAYING' || this.appState === 'PAUSED' || this.appState === 'GAME_OVER') {
             if (this.playerBoard) this.playerBoard.draw();
             if (this.cpuBoard) this.cpuBoard.draw();
 

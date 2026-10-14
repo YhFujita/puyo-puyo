@@ -116,6 +116,42 @@ class Sparkle {
     }
 }
 
+class Spark {
+    constructor(x, y, color) {
+        this.x = x;
+        this.y = y;
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 2 + Math.random() * 6;
+        this.vx = Math.cos(angle) * speed;
+        this.vy = Math.sin(angle) * speed - 2.0;
+        this.color = color;
+        this.radius = 2.5 + Math.random() * 2.5;
+        this.life = 1.0;
+        this.decay = 0.02 + Math.random() * 0.02;
+        this.gravity = 0.15;
+    }
+
+    update() {
+        this.vy += this.gravity;
+        this.x += this.vx;
+        this.y += this.vy;
+        this.life -= this.decay;
+        return this.life > 0;
+    }
+
+    draw(ctx) {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, this.life);
+        ctx.fillStyle = this.color;
+        ctx.shadowColor = this.color;
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+}
+
 class FloatingText {
     constructor(x, y, text, color, fontSize = 24) {
         this.x = x;
@@ -169,6 +205,7 @@ class ParticleManager {
         this.particles = [];
         this.shockwaves = [];
         this.sparkles = [];
+        this.sparks = [];
         this.texts = [];
     }
 
@@ -185,6 +222,12 @@ class ParticleManager {
         }
     }
 
+    addSparks(x, y, color = '#f59e0b', count = 10) {
+        for (let i = 0; i < count; i++) {
+            this.sparks.push(new Spark(x, y, color));
+        }
+    }
+
     addText(x, y, text, color = '#fbbf24', fontSize = 28) {
         this.texts.push(new FloatingText(x, y, text, color, fontSize));
     }
@@ -193,6 +236,7 @@ class ParticleManager {
         this.particles = this.particles.filter(p => p.update());
         this.shockwaves = this.shockwaves.filter(s => s.update());
         this.sparkles = this.sparkles.filter(sp => sp.update());
+        this.sparks = this.sparks.filter(spk => spk.update());
         this.texts = this.texts.filter(t => t.update());
     }
 
@@ -200,6 +244,7 @@ class ParticleManager {
         this.shockwaves.forEach(s => s.draw(ctx));
         this.particles.forEach(p => p.draw(ctx));
         this.sparkles.forEach(sp => sp.draw(ctx));
+        this.sparks.forEach(spk => spk.draw(ctx));
         this.texts.forEach(t => t.draw(ctx));
     }
 
@@ -207,6 +252,7 @@ class ParticleManager {
         this.particles = [];
         this.shockwaves = [];
         this.sparkles = [];
+        this.sparks = [];
         this.texts = [];
     }
 }
