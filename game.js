@@ -21,6 +21,7 @@ class PuyoBoard {
 
         this.isCPU = options.isCPU || false;
         this.difficulty = options.difficulty || 'normal';
+        this.onGameOver = options.onGameOver || null;
         this.cols = options.cols || 6;
         this.rows = options.rows || 12;
         this.ghostRows = 1;
@@ -818,10 +819,13 @@ class PuyoBoard {
     }
 
     gameOver() {
+        if (this.state === 'GAME_OVER') return;
         this.state = 'GAME_OVER';
-        if (!this.isCPU && window.soundEngine) window.soundEngine.playGameOver();
         if (window.particleManager) {
             window.particleManager.addText(this.width * 0.5, this.height * 0.45, this.isCPU ? 'CPU LOSE' : 'GAME OVER', '#ef4444', 36);
+        }
+        if (this.onGameOver) {
+            this.onGameOver(this);
         }
     }
 
@@ -1166,13 +1170,19 @@ class GameManager {
         // 1Pボード初期化
         const pCanvas = document.getElementById('game-canvas');
         const pNext = document.getElementById('next-canvas');
-        this.playerBoard = new PuyoBoard(pCanvas, pNext, { cols, rows, cellSize, isCPU: false });
+        this.playerBoard = new PuyoBoard(pCanvas, pNext, {
+            cols, rows, cellSize, isCPU: false,
+            onGameOver: (b) => this.handleGameOver(b)
+        });
 
         // VSモードの場合、CPUボードも初期化
         if (mode === 'vs') {
             const cpuCanvas = document.getElementById('cpu-canvas');
             const cpuNext = document.getElementById('cpu-next-canvas');
-            this.cpuBoard = new PuyoBoard(cpuCanvas, cpuNext, { cols, rows, cellSize, isCPU: true, difficulty });
+            this.cpuBoard = new PuyoBoard(cpuCanvas, cpuNext, {
+                cols, rows, cellSize, isCPU: true, difficulty,
+                onGameOver: (b) => this.handleGameOver(b)
+            });
 
             this.playerBoard.setOpponent(this.cpuBoard);
             this.cpuBoard.setOpponent(this.playerBoard);
@@ -1190,6 +1200,8 @@ class GameManager {
         document.getElementById('title-screen').style.display = 'none';
         document.getElementById('game-screen').style.display = 'flex';
         document.getElementById('pause-modal').style.display = 'none';
+        const resModal = document.getElementById('result-modal');
+        if (resModal) resModal.style.display = 'none';
 
         const cpuArea = document.getElementById('cpu-board-area');
         if (cpuArea) cpuArea.style.display = (mode === 'vs') ? 'flex' : 'none';
@@ -1225,6 +1237,66 @@ class GameManager {
         document.getElementById('title-screen').style.display = 'flex';
         document.getElementById('game-screen').style.display = 'none';
         document.getElementById('pause-modal').style.display = 'none';
+        const resModal = document.getElementById('result-modal');
+        if (resModal) resModal.style.display = 'none';
+    }
+
+    /**
+     * ゲーム終了（勝敗判定＆リザルト表示）
+     */
+    handleGameOver(loserBoard) {
+        if (this.appState === 'GAME_OVER') return;
+        this.appState = 'GAME_OVER';
+
+        // BGM停止
+        if (window.midiPlayer) window.midiPlayer.stop();
+
+        const isSolo = (this.mode === 'solo');
+        const isPlayerLoser = (loserBoard === this.playerBoard);
+
+        if (isSolo) {
+            if (window.soundEngine) window.soundEngine.playGameOver();
+            this.showResultModal('GAME OVER', 'とことんプレイ終了！お疲れ様でした！', '#ef4444');
+        } else {
+            if (isPlayerLoser) {
+                // プレイヤーの敗北
+                if (window.soundEngine) window.soundEngine.playGameOver();
+                this.showResultModal('YOU LOSE...', 'CPUに敗北してしまいました... リベンジしよう！', '#ef4444');
+            } else {
+                // CPUの敗北 ＝ プレイヤーの大勝利！！
+                if (window.soundEngine) window.soundEngine.playVictory();
+                if (this.playerBoard && window.particleManager) {
+                    window.particleManager.addText(this.playerBoard.width * 0.5, this.playerBoard.height * 0.35, 'YOU WIN!', '#f59e0b', 38);
+                    for (let i = 0; i < 50; i++) {
+                        const px = Math.random() * this.playerBoard.width;
+                        const py = Math.random() * this.playerBoard.height * 0.6;
+                        window.particleManager.addSparks(px, py, ['#ff3b5c', '#f59e0b', '#10b981', '#0ea5e9', '#a855f7'][i % 5], 10);
+                    }
+                }
+                this.showResultModal('🎉 YOU WIN! 🎉', 'お見事！見事にCPUを撃破しました！', '#f59e0b');
+            }
+        }
+    }
+
+    showResultModal(title, subtitle, color) {
+        setTimeout(() => {
+            const modal = document.getElementById('result-modal');
+            const tEl = document.getElementById('result-title');
+            const subEl = document.getElementById('result-subtitle');
+            const scoreEl = document.getElementById('result-score');
+            const chainEl = document.getElementById('result-chain');
+
+            if (tEl) {
+                tEl.textContent = title;
+                tEl.style.color = color;
+                tEl.style.textShadow = `0 0 24px ${color}`;
+            }
+            if (subEl) subEl.textContent = subtitle;
+            if (scoreEl && this.playerBoard) scoreEl.textContent = this.playerBoard.score.toLocaleString();
+            if (chainEl && this.playerBoard) chainEl.textContent = `${this.playerBoard.maxChain} 連鎖`;
+
+            if (modal) modal.style.display = 'flex';
+        }, 1100);
     }
 
     loop() {

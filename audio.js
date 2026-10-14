@@ -288,6 +288,31 @@ class SoundEngine {
         osc.start(now);
         osc.stop(now + 0.7);
     }
+
+    // 勝利ファンファーレ音（ド・ミ・ソ・高音ドの明るい祝賀和音）
+    playVictory() {
+        if (this.isMuted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+        notes.forEach((freq, i) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            const startTime = now + i * 0.12;
+
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, startTime);
+
+            gain.gain.setValueAtTime(0, startTime);
+            gain.gain.linearRampToValueAtTime(0.28, startTime + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.8);
+
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+
+            osc.start(startTime);
+            osc.stop(startTime + 0.85);
+        });
+    }
 }
 
 window.soundEngine = new SoundEngine();
