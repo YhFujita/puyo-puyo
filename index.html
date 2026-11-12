@@ -190,22 +190,41 @@
 
             <!-- モバイル用オンスクリーンタッチコントローラー -->
             <div class="touch-controls">
-                <div class="touch-grid">
-                    <!-- 左手十字キー (左右移動・急降下・高速落下) -->
-                    <div class="dpad-container">
-                        <div></div>
-                        <button class="touch-btn hard-drop" id="btn-hard-drop-left" title="急降下">⚡</button>
-                        <div></div>
-                        <button class="touch-btn" id="btn-move-left" title="左移動">◀</button>
-                        <button class="touch-btn" id="btn-soft-drop" title="高速落下">▼</button>
-                        <button class="touch-btn" id="btn-move-right" title="右移動">▶</button>
+                <div class="touch-controller-layout">
+                    <!-- 左端：[上] 左回転 / [下] 左移動 -->
+                    <div class="touch-col touch-col-left">
+                        <button class="touch-btn rot" id="btn-rot-left" title="左回転 (Z)">
+                            <span class="touch-btn-icon">↶</span>
+                            <span class="touch-btn-label">左回転</span>
+                        </button>
+                        <button class="touch-btn move" id="btn-move-left" title="左移動 (◀)">
+                            <span class="touch-btn-icon">◀</span>
+                            <span class="touch-btn-label">左</span>
+                        </button>
                     </div>
 
-                    <!-- 右手アクションボタン (回転・ハードドロップ) -->
-                    <div class="action-container">
-                        <button class="touch-btn rot" id="btn-rot-left" title="左回転 (Z)">↶</button>
-                        <button class="touch-btn rot" id="btn-rot-right" title="右回転 (X)">↷</button>
-                        <button class="touch-btn hard-drop span-2" id="btn-hard-drop-right" title="瞬時落下 (HARD DROP)">⚡ DROP</button>
+                    <!-- 中央：[上] 即時落下 (ハードドロップ) / [下] 高速落下 (ソフトドロップ) -->
+                    <div class="touch-col touch-col-center">
+                        <button class="touch-btn hard-drop" id="btn-hard-drop" title="瞬時落下 (HARD DROP)">
+                            <span class="touch-btn-icon">⚡</span>
+                            <span class="touch-btn-label">即時落下</span>
+                        </button>
+                        <button class="touch-btn drop" id="btn-soft-drop" title="高速落下 (▼)">
+                            <span class="touch-btn-icon">▼</span>
+                            <span class="touch-btn-label">落下</span>
+                        </button>
+                    </div>
+
+                    <!-- 右端：[上] 右回転 / [下] 右移動 -->
+                    <div class="touch-col touch-col-right">
+                        <button class="touch-btn rot" id="btn-rot-right" title="右回転 (X)">
+                            <span class="touch-btn-icon">↷</span>
+                            <span class="touch-btn-label">右回転</span>
+                        </button>
+                        <button class="touch-btn move" id="btn-move-right" title="右移動 (▶)">
+                            <span class="touch-btn-icon">▶</span>
+                            <span class="touch-btn-label">右</span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -463,7 +482,7 @@
                 btn.addEventListener('mousedown', tap);
             };
 
-            // 左手十字キーのバインド
+            // コントローラーボタンのバインド (左端: 移動＆回転、中央: 落下＆即時落下、右端: 移動＆回転)
             setupRepeatButton('btn-move-left', () => {
                 if (gameManager.playerBoard) gameManager.playerBoard.movePair(-1);
             });
@@ -475,20 +494,21 @@
                 () => { if (gameManager.playerBoard) gameManager.playerBoard.fastDrop = true; },
                 () => { if (gameManager.playerBoard) gameManager.playerBoard.fastDrop = false; }
             );
+            setupTapButton('btn-hard-drop', () => {
+                if (gameManager.playerBoard) gameManager.playerBoard.hardDrop();
+            }, 20);
             setupTapButton('btn-hard-drop-left', () => {
                 if (gameManager.playerBoard) gameManager.playerBoard.hardDrop();
             }, 20);
-
-            // 右手アクションボタンのバインド
+            setupTapButton('btn-hard-drop-right', () => {
+                if (gameManager.playerBoard) gameManager.playerBoard.hardDrop();
+            }, 20);
             setupTapButton('btn-rot-left', () => {
                 if (gameManager.playerBoard) gameManager.playerBoard.rotatePair(-1);
             }, 12);
             setupTapButton('btn-rot-right', () => {
                 if (gameManager.playerBoard) gameManager.playerBoard.rotatePair(1);
             }, 12);
-            setupTapButton('btn-hard-drop-right', () => {
-                if (gameManager.playerBoard) gameManager.playerBoard.hardDrop();
-            }, 20);
 
             // ==========================================
             // 盤面キャンバス上の直接スワイプ・フリック・タップ操作
@@ -570,6 +590,10 @@
                     }
                 }
             }, { passive: true });
+
+            if (new URLSearchParams(window.location.search).has('autostart')) {
+                document.getElementById('btn-start-game').click();
+            }
 
             window.addEventListener('pointerdown', ensureAudio, { once: true });
         });
